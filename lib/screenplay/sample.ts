@@ -63,7 +63,7 @@ export const sampleScreenplay: Screenplay = {
         { type: "action", text: "夜里，林夏回到出租屋，翻出一张旧合影，怔怔出神。" },
         { type: "dialogue", character: "char_lin", mode: "voiceover", line: "有些话，隔了十年还是说不出口。" },
       ],
-      review: { status: "generated", confidence: 0.74 },
+      review: { status: "generated", confidence: 0.58 },
     },
   ],
 };

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import SceneCard from "@/components/SceneCard";
+import { sampleScreenplay } from "@/lib/screenplay/sample";
 
 export default async function WorkbenchPage({
   params,
@@ -38,10 +40,14 @@ export default async function WorkbenchPage({
           <p className="text-neutral-400">导入小说后显示；点右侧场景会高亮其来源段落。</p>
         </section>
         <section className="flex-1 overflow-auto p-4">
-          <p className="mb-2 text-xs font-medium tracking-wide text-neutral-400 uppercase">
+          <p className="mb-3 text-xs font-medium tracking-wide text-neutral-400 uppercase">
             剧本（本章各场）
           </p>
-          <p className="text-neutral-400">生成后按场渲染，可就地编辑、低置信标红。</p>
+          <div className="space-y-3">
+            {sampleScreenplay.scenes.map((s) => (
+              <SceneCard key={s.id} scene={s} characters={sampleScreenplay.characters} />
+            ))}
+          </div>
         </section>
       </div>
     </div>
