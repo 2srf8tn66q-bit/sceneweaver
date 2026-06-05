@@ -1,29 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { LLMConfig, LLMProvider } from "@/lib/llm/types";
 import { loadLLMConfig, saveLLMConfig } from "@/lib/config";
 import { testConnection } from "@/lib/llm/llmService";
 
-export default function SettingsModal({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
+export default function SettingsModal({ onClose }: { onClose: () => void }) {
+  // 仅在打开时挂载（见 page.tsx 的条件渲染），useState 初始化即加载本地配置，
+  // 无需在 effect 里 setState。
   const [config, setConfig] = useState<LLMConfig>(loadLLMConfig());
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (open) {
-      setConfig(loadLLMConfig());
-      setResult(null);
-    }
-  }, [open]);
-
-  if (!open) return null;
 
   function update<K extends keyof LLMConfig>(key: K, value: LLMConfig[K]) {
     setConfig((c) => ({ ...c, [key]: value }));

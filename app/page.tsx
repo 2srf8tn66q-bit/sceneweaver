@@ -34,7 +34,7 @@ export default function HomePage() {
         </p>
       </section>
 
-      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
     </main>
   );
 }
