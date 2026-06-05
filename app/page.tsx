@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
 
 export default function HomePage() {
@@ -21,9 +22,12 @@ export default function HomePage() {
           >
             设置
           </button>
-          <button className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white hover:bg-neutral-700">
+          <Link
+            href="/import"
+            className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white hover:bg-neutral-700"
+          >
             + 新建改编
-          </button>
+          </Link>
         </div>
       </header>
 
