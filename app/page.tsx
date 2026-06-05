@@ -15,6 +15,7 @@ export default function HomePage() {
         </div>
         <div className="flex gap-2">
           <button
+            data-testid="open-settings"
             onClick={() => setSettingsOpen(true)}
             className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100"
           >
