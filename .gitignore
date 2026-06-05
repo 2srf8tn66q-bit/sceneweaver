@@ -21,3 +21,6 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+
+# 本地规划文件（不推 GitHub）
+/Plan.md
