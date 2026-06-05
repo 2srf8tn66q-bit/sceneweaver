@@ -39,6 +39,8 @@ export interface SourceRef {
 export interface ActionElement {
   type: "action";
   text: string;
+  from_internal?: boolean; // true = 由原文内心戏外化而来（界面以 ✦ 标记）
+  note?: string; // 可选：外化说明，悬停显示
 }
 export interface DialogueElement {
   type: "dialogue";
@@ -74,7 +76,6 @@ export interface Scene {
   synopsis?: string;
   dramatic_function?: string;
   source?: SourceRef;
-  adaptation_note?: string;
   elements: SceneElement[];
   review?: Review;
 }
