@@ -35,11 +35,16 @@ export const sampleScreenplay: Screenplay = {
       synopsis: "王志强与林夏多年后重逢",
       dramatic_function: "建立两人的疏离，埋下未解的过往",
       source: { chapter: 1, paragraph_range: [12, 18] },
-      adaptation_note: "原文大段写林夏忐忑心理，已外化为「迟疑地」开口 + 手指绞衣角",
       elements: [
         {
           type: "action",
-          text: "午后的阳光斜照进暖咖啡。王志强擦着杯子，门铃响了，林夏迟疑地走进来。",
+          text: "午后的阳光斜照进暖咖啡。王志强擦着杯子，门铃响了，林夏走进来。",
+        },
+        {
+          type: "action",
+          text: "林夏的手指绞着衣角。",
+          from_internal: true,
+          note: "原文：林夏心里七上八下",
         },
         { type: "dialogue", character: "char_lin", mode: "in_scene", parenthetical: "迟疑地", line: "好久不见。" },
         { type: "dialogue", character: "char_wang", line: "……你回来了。" },

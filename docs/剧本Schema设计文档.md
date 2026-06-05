@@ -1,6 +1,6 @@
 # 剧本 YAML Schema 设计文档
 
-> SceneWeaver 的核心数据契约。本文定义把小说改编成剧本时使用的 YAML 结构，并**逐条说明每个设计决策的原因**。版本：v0.2（2026-06-05）。
+> SceneWeaver 的核心数据契约。本文定义把小说改编成剧本时使用的 YAML 结构，并**逐条说明每个设计决策的原因**。版本：v0.3（2026-06-05）。
 
 ---
 
@@ -40,7 +40,7 @@ structure    # 幕 / 场分层（可选，长篇用）
 scenes       # 场次列表：剧本主体，scene 是最小结构单元
 ```
 
-## 5. 完整 Schema（v0.2，带注释）
+## 5. 完整 Schema（v0.3，带注释）
 
 ```yaml
 meta:
@@ -87,11 +87,14 @@ scenes:
       chapter: 1
       paragraph_range: [12, 18]        # 来自第 1 章第 12~18 段
 
-    adaptation_note: 原文大段写林夏忐忑心理，已外化为"迟疑地"开口 + 手指绞衣角  # 内心戏如何外化
-
     elements:                          # 场内元素：有序异构列表，保留动作与对白的交错顺序
       - type: action                   # ① 动作 / 场景描述
-        text: 午后的阳光斜照进咖啡馆。王志强擦着杯子，门铃响了。
+        text: 午后的阳光斜照进咖啡馆。王志强擦着杯子，门铃响了，林夏走进来。
+
+      - type: action
+        text: 林夏的手指绞着衣角。
+        from_internal: true            # 由原文内心戏外化而来 → 界面以 ✦ 标记
+        note: 原文：林夏心里七上八下     # 可选：外化说明，悬停显示
 
       - type: dialogue                 # ② 对白
         character: char_lin            # 引用人物 id
@@ -113,7 +116,7 @@ scenes:
 
     review:                            # 编辑状态：人机协作元信息
       status: generated                # generated 自动生成 / edited 已修改 / confirmed 已确认
-      confidence: 0.82                 # 模型对本场的置信度，低的→编辑器标红提示重点检查
+      confidence: 0.82                 # 模型对本场把握(0~1)：≥0.7 留白 / 0.4–0.7 需复核 / <0.4 存疑
 ```
 
 ## 6. 字段详解
@@ -133,8 +136,7 @@ scenes:
 - `heading`：场标三要素 `setting / location / time`，**只存结构值**（INT/EXT、地点串、时间枚举），不含任何排版符号。
 - `synopsis` / `dramatic_function`：前者是"讲了什么"，后者是"推进了什么"——后者用来对齐编剧专业要求（每场至少推进 2-3 件事），也是别的工具不会做的设计深度。
 - `source`：本场对应原文段落区间，支撑编辑器"跳回原文对照"和"重新生成本场"。
-- `adaptation_note`：记录改编时把哪段内心戏外化成了什么动作，既是可解释性，也方便作者核对。
-- `elements`：见 §7。
+- `elements`：见 §7。其中动作元素可带 `from_internal: true`（+ 可选 `note`），标记该句由原文内心戏外化而来。
 - `review`：`status` + `confidence`，把工具从"一次性生成"变成"可持续打磨的协作对象"。
 
 ## 7. 核心设计决策与理由
@@ -157,8 +159,8 @@ scenes:
 ### 决策 6：`render_format` + 场标只存结构 = **数据与表现分离**
 **理由**：国内剧本场标是"时间—内外景—地点"、动作行首加 △、人物名加粗；好莱坞是"INT.—地点—时间"、全大写。这些**全是排版差异，底层结构一致**。所以结构数据只存 `setting/location/time` 等语义值，排版交给渲染层按 `render_format` 决定。好处：**同一份数据可导出国内或好莱坞两种格式**，互不污染。
 
-### 决策 7：`adaptation_note` / `dramatic_function` 记录改编意图
-**理由**：改编最核心的动作是"把不可见的内心戏外化"（show, don't tell）。把"原文是心理描写、已外化为 XX 动作"显式记下来，既提升可解释性，也让作者一眼看出改编是否到位。
+### 决策 7：用元素级 `from_internal` 标记"内心戏外化"，而非场级一句话
+**理由**：改编最核心的动作是"把不可见的内心戏外化"（show, don't tell）。早期版本用场级 `adaptation_note` 写一句话说明，但它说不清"具体哪一句"是外化来的、又费 token。改为在**具体那个动作元素**上打 `from_internal: true`（可选 `note` 作悬停说明），界面用 ✦ + 淡色标记——精确到句、可视、更轻。`dramatic_function`（本场推进了什么）保留，对齐"每场至少做 2-3 件事"。
 
 ## 8. 中外剧本格式与渲染层
 
@@ -188,4 +190,4 @@ scenes:
 
 ---
 
-*版本历史：v0.1 初版（meta/characters/scenes + 有序 elements + source + review）→ v0.2 增补旁白 mode、dual_dialogue、幕分层、dramatic_function、adaptation_note、render_format，并明确数据与表现分离。*
+*版本历史：v0.1 初版（meta/characters/scenes + 有序 elements + source + review）→ v0.2 增补旁白 mode、dual_dialogue、幕分层、dramatic_function、adaptation_note、render_format，并明确数据与表现分离。→ v0.3 将"内心戏外化"从场级 `adaptation_note` 改为元素级 `from_internal` 标记（删除 `adaptation_note`）。*
