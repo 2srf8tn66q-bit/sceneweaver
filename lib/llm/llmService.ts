@@ -2,6 +2,7 @@
 // 经本地代理 /api/llm/proxy 转发，支持 OpenAI 兼容与 Claude 两种格式，含中文友好错误与超时/abort。
 
 import type { LLMConfig, ChatMessage } from "./types";
+import { getProvider } from "./providers";
 
 /**
  * 把服务商返回的难懂错误转成中文友好提示。
@@ -104,7 +105,7 @@ export async function sendChatMessage(
   messages: ChatMessage[],
   externalSignal?: AbortSignal,
 ): Promise<string> {
-  const isClaude = config.provider === "claude";
+  const isClaude = getProvider(config.provider).format === "claude";
   const { url, headers, body } = isClaude
     ? buildClaudeRequest(config, messages)
     : buildOpenAICompatibleRequest(config, messages);

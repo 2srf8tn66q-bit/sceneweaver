@@ -1,14 +1,16 @@
 // LLM 配置的本地持久化（localStorage）。API Key 只存本地，不上传、不入库。
 
 import type { LLMConfig } from "./llm/types";
+import { getProvider } from "./llm/providers";
 
 const KEY = "sceneweaver.llmConfig";
 
+const ds = getProvider("deepseek");
 const DEFAULT_CONFIG: LLMConfig = {
-  provider: "openai",
-  baseUrl: "https://api.openai.com/v1",
+  provider: "deepseek",
+  baseUrl: ds.baseUrl,
   apiKey: "",
-  model: "gpt-4o-mini",
+  model: ds.model,
 };
 
 export function loadLLMConfig(): LLMConfig {

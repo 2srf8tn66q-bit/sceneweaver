@@ -1,6 +1,16 @@
 // LLM 配置与消息类型（沿用 copychat 的 OpenAI 兼容 / Claude 双格式约定）
 
-export type LLMProvider = "claude" | "openai";
+export type LLMProvider =
+  | "deepseek"
+  | "openai"
+  | "kimi"
+  | "zhipu"
+  | "claude"
+  | "aliyun"
+  | "minimax"
+  | "mimo"
+  | "ollama"
+  | "custom";
 
 export interface LLMConfig {
   // claude = Anthropic 原生格式；openai = 任意 OpenAI 兼容服务（DeepSeek / Kimi / 七牛 等）
