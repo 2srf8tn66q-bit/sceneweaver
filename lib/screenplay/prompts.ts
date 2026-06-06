@@ -51,12 +51,11 @@ export function buildAdaptMessages(characters: Character[], scenes: SceneText[])
 - 动作若由原文内心戏外化而来，给该 action 加 "from_internal": true（可选 "note" 说明从哪外化）；
 - 每场必须给 synopsis(一句话梗概)、dramatic_function(本场推进了什么、做了哪 2-3 件事)、source(来自原文的段落区间) 与 confidence(0~1)。
 
-confidence(0~1) 是你对这一场"有多贴近原文 / 自己补足了多少"的诚实标注，给作者参考——它不是对错评分，低分既不扣分、也不代表错误：
-- 0.85~1.0：近乎直译式转换、原文信息充分；
-- 0.6~0.85：有合理推断、少量补充；
-- 0.4~0.6：较多由你创造/补足的过渡或开场处理（这是好事，照常生成，只是如实标低，让作者知道这是你加的）；
-- <0.4：你也吃不准、可能离题。
-重要：不要因为某段会得低分就略过它——该补的过渡、该有的开场处理，请照常生成并诚实给分。
+confidence(0~1) 按一个明确标准给：这一场"贴着原文的程度" = 1 − 你自己创造/补足的比例。它不是对错评分，低分只表示"演绎成分高、请作者重点看一眼"，不扣分、不代表错：
+- 你的自创/补足 < 30%（基本照原文改编）→ confidence ≥ 0.7；
+- 自创/补足约 30%~60%（有明显补足、桥段、合并）→ confidence 0.4~0.7；
+- 自创/补足 > 60%（大部分是你的演绎，如纯 V.O. 蒙太奇、原文没有的过渡场）→ confidence < 0.4。
+按这个比例如实给分：该补的过渡、该有的开场 V.O. 请照常生成——它们自创比例高、本就该落在低分档，这正是要让作者知道的，不是让你回避。
 
 严格按此 JSON 结构输出，不要解释：
 {"scenes":[{"id":"scene_001","number":1,"heading":{"setting":"INT","location":"地点","time":"DAY"},"synopsis":"一句梗概","dramatic_function":"本场推进了什么","source":{"chapter":1,"paragraph_range":[1,5]},"elements":[{"type":"action","text":"…","from_internal":true},{"type":"dialogue","character":"char_lin","line":"…"}],"review":{"status":"generated","confidence":0.8}}]}`;
