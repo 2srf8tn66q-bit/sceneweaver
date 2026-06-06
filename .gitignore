@@ -24,6 +24,7 @@ venv/
 
 # 本地规划文件（不推 GitHub）
 /Plan.md
+/Learnings.md
 
 # Claude 本地工具配置（不入库）
 /.claude/
