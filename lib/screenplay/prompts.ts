@@ -22,11 +22,10 @@ export function buildUnderstandMessages(numberedNovel: string): ChatMessage[] {
 - description：一句话人设
 - role：protagonist / supporting / minor
 
-【分场】按"地点变化或时间跳跃"切场，每场给：
+【分场】按"地点变化或时间跳跃"切场，每场只给：
 - paragraph_range：[起段号, 止段号]（用下面给的 ¶ 段号）
-- synopsis：一句话本场发生了什么
 
-只输出 JSON：{"characters":[...],"scenes":[{"paragraph_range":[1,5],"synopsis":"…"}]}
+只输出 JSON：{"characters":[...],"scenes":[{"paragraph_range":[1,5]}]}
 不要任何解释。`;
   const user = `小说（每段前是 ¶段号）：\n${numberedNovel}`;
   return [

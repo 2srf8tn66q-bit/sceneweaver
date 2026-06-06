@@ -43,13 +43,17 @@ export function batchScenes(scenes: SceneText[], charBudget = 2500): SceneText[]
 }
 
 /** 带并发上限的并行 map（不引第三方库的轻量实现）。 */
-async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+export async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
   const results: R[] = new Array(items.length);
   let next = 0;
   async function worker() {
     while (next < items.length) {
       const i = next++;
-      results[i] = await fn(items[i]);
+      results[i] = await fn(items[i], i);
     }
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length || 1) }, worker));
@@ -59,13 +63,18 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
 export async function generateScreenplay(
   novel: string,
   call: LLMCall,
-  opts: { title?: string; concurrency?: number; charBudget?: number } = {},
+  opts: { title?: string; concurrency?: number; charBudget?: number; onLog?: (msg: string) => void } = {},
 ): Promise<GenerateResult> {
+  const log = opts.onLog ?? (() => {});
+  const t0 = Date.now();
   const paras = splitParagraphs(novel);
+  log(`原文分 ${paras.length} 段`);
 
   // 1) Call 1：理解（人物表 + 分场）
+  log("Call1 理解 开始…");
   const understandRaw = await call(buildUnderstandMessages(toNumberedText(paras)));
   const understand = safeParseJSON<UnderstandOutput>(understandRaw, { characters: [], scenes: [] });
+  log(`Call1 完成 ${Date.now() - t0}ms：${understand.characters.length} 人物 / ${understand.scenes.length} 分场`);
 
   const sceneTexts: SceneText[] = understand.scenes.map((s, i) => ({
     number: i + 1,
@@ -75,24 +84,33 @@ export async function generateScreenplay(
 
   // 2) Call 2：分批 + 并行改编（每批输出短，不超时；共享人物表保一致）
   const batches = batchScenes(sceneTexts, opts.charBudget ?? 2500);
-  const perBatch = await mapLimit(batches, opts.concurrency ?? 12, async (batch) => {
+  const conc = opts.concurrency ?? 12;
+  log(`Call2 改编：${batches.length} 批，并发 ${conc}`);
+  const t2 = Date.now();
+  const perBatch = await mapLimit(batches, conc, async (batch, idx) => {
+    const bt = Date.now();
+    log(`  批 ${idx + 1}/${batches.length} 开始（${batch.length} 场）`);
     const raw = await call(buildAdaptMessages(understand.characters, batch));
+    log(`  批 ${idx + 1}/${batches.length} 完成 ${Date.now() - bt}ms`);
     return safeParseJSON<{ scenes?: unknown[] }>(raw, { scenes: [] }).scenes ?? [];
   });
+  log(`Call2 全部完成 ${Date.now() - t2}ms`);
   let scenes: unknown[] = renumber(perBatch.flat());
 
   // 3) 质检 + 修复：代码当裁判，LLM 当修理工（最多 1 次）
   let parsed = assemble(understand.characters, scenes, opts);
   let validation = validateScreenplay(parsed);
   let repairs = 0;
-  const MAX_REPAIRS = 2;
+  const MAX_REPAIRS = 1;
   while (!validation.valid && repairs < MAX_REPAIRS) {
+    log(`质检未过（${validation.errors.length} 错），修复第 ${repairs + 1} 次…`);
     const repairRaw = await call(buildRepairMessages(JSON.stringify({ scenes }), validation.errors));
     scenes = renumber(safeParseJSON<{ scenes?: unknown[] }>(repairRaw, { scenes }).scenes ?? scenes);
     parsed = assemble(understand.characters, scenes, opts);
     validation = validateScreenplay(parsed);
     repairs++;
   }
+  log(`完成：${scenes.length} 场，总耗时 ${Date.now() - t0}ms，质检${validation.valid ? "通过" : "有残留"}`);
 
   // 最大努力返回：即使仍有残留问题，也把剧本交回去（渲染 + 标注），不丢弃整份结果。
   return {

@@ -5,10 +5,9 @@ import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
 import SceneCard from "@/components/SceneCard";
 import { loadLLMConfig } from "@/lib/config";
-import { sendChatMessage } from "@/lib/llm/llmService";
-import { generateScreenplay } from "@/lib/screenplay/pipeline";
 import { splitParagraphs } from "@/lib/screenplay/paragraphs";
 import type { Screenplay } from "@/lib/screenplay/types";
+import type { ValidationResult } from "@/lib/screenplay/validate";
 
 const emptySubscribe = () => () => {};
 
@@ -43,12 +42,21 @@ export default function Workbench({ id }: { id: string }) {
     setError(null);
     setNotice(null);
     try {
-      const result = await generateScreenplay(
-        novel,
-        (messages) => sendChatMessage(config, messages),
-        { title: "未命名剧本" },
-      );
-      if (result.screenplay) {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ novel, config, title: "未命名剧本" }),
+        signal: AbortSignal.timeout(900000),
+      });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error ?? `生成失败 (${res.status})`);
+      }
+      const result = (await res.json()) as {
+        screenplay: Screenplay | null;
+        validation: ValidationResult;
+      };
+      if (result.screenplay && result.screenplay.scenes.length > 0) {
         setScreenplay(result.screenplay);
         if (!result.validation.valid) {
           setNotice(
