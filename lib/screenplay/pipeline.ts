@@ -75,11 +75,11 @@ export async function generateScreenplay(
 
   // 2) Call 2：分批 + 并行改编（每批输出短，不超时；共享人物表保一致）
   const batches = batchScenes(sceneTexts, opts.charBudget ?? 2500);
-  const perBatch = await mapLimit(batches, opts.concurrency ?? 3, async (batch) => {
+  const perBatch = await mapLimit(batches, opts.concurrency ?? 12, async (batch) => {
     const raw = await call(buildAdaptMessages(understand.characters, batch));
     return safeParseJSON<{ scenes?: unknown[] }>(raw, { scenes: [] }).scenes ?? [];
   });
-  let scenes: unknown[] = perBatch.flat();
+  let scenes: unknown[] = renumber(perBatch.flat());
 
   // 3) 质检 + 修复：代码当裁判，LLM 当修理工（最多 1 次）
   let parsed = assemble(understand.characters, scenes, opts);
@@ -88,7 +88,7 @@ export async function generateScreenplay(
   const MAX_REPAIRS = 2;
   while (!validation.valid && repairs < MAX_REPAIRS) {
     const repairRaw = await call(buildRepairMessages(JSON.stringify({ scenes }), validation.errors));
-    scenes = safeParseJSON<{ scenes?: unknown[] }>(repairRaw, { scenes }).scenes ?? scenes;
+    scenes = renumber(safeParseJSON<{ scenes?: unknown[] }>(repairRaw, { scenes }).scenes ?? scenes);
     parsed = assemble(understand.characters, scenes, opts);
     validation = validateScreenplay(parsed);
     repairs++;
@@ -102,6 +102,15 @@ export async function generateScreenplay(
     batches: batches.length,
     repaired: repairs > 0,
   };
+}
+
+/** 各批独立生成会重复 id/场号，合并后统一重编，保证全局唯一且连续。 */
+function renumber(scenes: unknown[]): unknown[] {
+  return scenes.map((s, i) =>
+    s && typeof s === "object"
+      ? { ...(s as Record<string, unknown>), id: `scene_${String(i + 1).padStart(3, "0")}`, number: i + 1 }
+      : s,
+  );
 }
 
 /** 把 Call 1 的人物表与各批场景拼成完整 Screenplay 对象。 */

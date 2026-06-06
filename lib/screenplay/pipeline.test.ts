@@ -100,6 +100,33 @@ describe("生成 pipeline（generateScreenplay）", () => {
   });
 });
 
+describe("分批后重编号", () => {
+  it("各批合并后场号/id 全局唯一且连续", async () => {
+    const call1 = JSON.stringify({
+      characters: [{ id: "char_lin", name: "林夏" }],
+      scenes: [{ paragraph_range: [1, 1] }, { paragraph_range: [2, 2] }],
+    });
+    // 每批都返回同一个 id "dup" 的场景，模拟独立生成时的 id 撞车
+    const dup = JSON.stringify({
+      scenes: [
+        {
+          id: "dup",
+          number: 1,
+          heading: { setting: "INT", location: "x", time: "DAY" },
+          elements: [{ type: "action", text: "林夏走过。" }],
+          review: { status: "generated", confidence: 0.8 },
+        },
+      ],
+    });
+    const fake: LLMCall = async (m) => (m[0].content.includes("建人物档案") ? call1 : dup);
+    // charBudget=1 → 每场各自成一批，触发两批
+    const r = await generateScreenplay("林夏\n王志强", fake, { charBudget: 1 });
+    const ids = r.screenplay?.scenes.map((s) => s.id) ?? [];
+    expect(new Set(ids).size).toBe(ids.length); // 全唯一
+    expect(r.screenplay?.scenes.map((s) => s.number)).toEqual([1, 2]);
+  });
+});
+
 describe("分批 batchScenes", () => {
   const mk = (n: number, len: number): SceneText => ({ number: n, range: [n, n], text: "字".repeat(len) });
 
