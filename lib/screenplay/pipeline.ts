@@ -84,21 +84,23 @@ export async function generateScreenplay(
   // 3) 质检 + 修复：代码当裁判，LLM 当修理工（最多 1 次）
   let parsed = assemble(understand.characters, scenes, opts);
   let validation = validateScreenplay(parsed);
-  let repaired = false;
-  if (!validation.valid) {
+  let repairs = 0;
+  const MAX_REPAIRS = 2;
+  while (!validation.valid && repairs < MAX_REPAIRS) {
     const repairRaw = await call(buildRepairMessages(JSON.stringify({ scenes }), validation.errors));
     scenes = safeParseJSON<{ scenes?: unknown[] }>(repairRaw, { scenes }).scenes ?? scenes;
     parsed = assemble(understand.characters, scenes, opts);
     validation = validateScreenplay(parsed);
-    repaired = true;
+    repairs++;
   }
 
+  // 最大努力返回：即使仍有残留问题，也把剧本交回去（渲染 + 标注），不丢弃整份结果。
   return {
-    screenplay: validation.valid ? (parsed as Screenplay) : null,
+    screenplay: scenes.length > 0 ? (parsed as Screenplay) : null,
     validation,
     scenes: scenes.length,
     batches: batches.length,
-    repaired,
+    repaired: repairs > 0,
   };
 }
 

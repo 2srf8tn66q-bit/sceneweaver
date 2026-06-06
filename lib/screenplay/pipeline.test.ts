@@ -76,6 +76,28 @@ describe("生成 pipeline（generateScreenplay）", () => {
     expect(r.repaired).toBe(true);
     expect(r.validation.valid).toBe(true);
   });
+
+  it("修复仍不过：best-effort 返回剧本不丢弃，并标记未通过", async () => {
+    const call1 = JSON.stringify({
+      characters: [{ id: "char_lin", name: "林夏" }],
+      scenes: [{ paragraph_range: [1, 2] }],
+    });
+    const stillBad = JSON.stringify({
+      scenes: [
+        {
+          id: "s1",
+          number: 1,
+          heading: { setting: "INT", location: "咖啡馆", time: "DAY" },
+          elements: [{ type: "dialogue", character: "char_ghost", line: "嗨" }],
+          review: { status: "generated", confidence: 0.7 },
+        },
+      ],
+    });
+    const r = await generateScreenplay(novel, makeFakeLLM(call1, stillBad)); // 修复也返回坏的
+    expect(r.validation.valid).toBe(false);
+    expect(r.screenplay).not.toBeNull();
+    expect(r.screenplay?.scenes).toHaveLength(1);
+  });
 });
 
 describe("分批 batchScenes", () => {
