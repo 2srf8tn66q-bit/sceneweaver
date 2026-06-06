@@ -62,6 +62,8 @@ export default function SceneCard({ scene, characters }: { scene: Scene; charact
         )}
       </div>
 
+      {scene.synopsis && <p className="mb-2 text-xs text-neutral-500">{scene.synopsis}</p>}
+
       <div className="space-y-1.5 text-[13.5px]">
         {scene.elements.map((el, i) => {
           if (el.type === "action") {
@@ -111,6 +113,15 @@ export default function SceneCard({ scene, characters }: { scene: Scene; charact
           );
         })}
       </div>
+
+      {(scene.source?.paragraph_range || scene.dramatic_function) && (
+        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t border-neutral-100 pt-2 text-[11px] text-neutral-400">
+          {scene.source?.paragraph_range && (
+            <span>源自原文 ¶{scene.source.paragraph_range[0]}–{scene.source.paragraph_range[1]}</span>
+          )}
+          {scene.dramatic_function && <span>推进：{scene.dramatic_function}</span>}
+        </div>
+      )}
     </div>
   );
 }
