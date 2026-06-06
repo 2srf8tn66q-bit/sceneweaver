@@ -122,6 +122,21 @@ export default function Workbench({ id }: { id: string }) {
     }
   }
 
+  // 场卡就地编辑回写：替换该场并持久化到 IDB。
+  function handleSceneChange(updated: Scene) {
+    if (!screenplay) return;
+    const next: Screenplay = {
+      ...screenplay,
+      scenes: screenplay.scenes.map((s) => (s.id === updated.id ? updated : s)),
+    };
+    setScreenplay(next);
+    if (project) {
+      const p: Project = { ...project, screenplay: next, updatedAt: new Date().toISOString() };
+      setProject(p);
+      void saveProject(p);
+    }
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 text-sm">
@@ -244,6 +259,7 @@ export default function Workbench({ id }: { id: string }) {
                   scene={s}
                   characters={screenplay.characters}
                   onSelect={() => selectScene(s)}
+                  onSceneChange={handleSceneChange}
                   active={s.id === activeSceneId}
                 />
               ))}
