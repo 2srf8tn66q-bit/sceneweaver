@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { newProject, saveProject } from "@/lib/projects";
 
 export default function ImportPage() {
   const [text, setText] = useState("");
@@ -36,10 +37,11 @@ export default function ImportPage() {
     }
   }
 
-  function start() {
+  async function start() {
     if (!text.trim()) return;
-    sessionStorage.setItem("sceneweaver.draftNovel", text);
-    router.push("/project/draft");
+    const project = newProject(text);
+    await saveProject(project);
+    router.push(`/project/${project.id}`);
   }
 
   const chars = text.replace(/\s/g, "").length;
