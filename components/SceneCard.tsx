@@ -3,7 +3,7 @@
 // 场卡：渲染一场戏，带置信度三档标记（左竖条 + 置信环）与内心戏外化 ✦。
 // 选中后（active）可就地编辑梗概 / 动作 / 对白台词：点字段进入编辑，改完回调父组件存盘。
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Scene, Character } from "@/lib/screenplay/types";
 import { confidenceTier } from "@/lib/screenplay/confidence";
 
@@ -46,7 +46,23 @@ export default function SceneCard({
   const pct = Math.round(conf * 100);
 
   const [editingKey, setEditingKey] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const editRef = useRef<HTMLSpanElement>(null);
+
+  // 进入编辑时自动聚焦并把光标放到文字末尾。
+  useEffect(() => {
+    if (!editingKey) return;
+    const el = editRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+    });
+  }, [editingKey]);
 
   // 编辑后回写：替换字段并标记为 edited。
   function commit(next: Partial<Scene>) {
@@ -70,27 +86,27 @@ export default function SceneCard({
   ) {
     if (editingKey === key) {
       return (
-        <textarea
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+        <span
+          ref={editRef}
+          contentEditable
+          suppressContentEditableWarning
           onClick={(e) => e.stopPropagation()}
           onBlur={() => {
-            if (draft !== value) save(draft);
+            const text = editRef.current?.textContent ?? "";
+            if (text !== value) save(text);
             setEditingKey(null);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Escape") setEditingKey(null);
-            else if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Escape") {
               e.preventDefault();
-              if (draft !== value) save(draft);
-              setEditingKey(null);
+              if (editRef.current) editRef.current.textContent = value;
+              editRef.current?.blur();
             }
           }}
-          rows={Math.min(6, Math.max(1, draft.split("\n").length))}
-          className="my-0.5 w-full resize-none rounded border border-neutral-300 bg-white px-1.5 py-1 leading-relaxed outline-none focus:border-neutral-400"
-          style={{ font: "inherit", color: "inherit" }}
-        />
+          className="outline-none"
+        >
+          {value}
+        </span>
       );
     }
     return (
@@ -99,7 +115,6 @@ export default function SceneCard({
           if (!active) return; // 未选中：让点击冒泡到卡片 → 选中 + 跳原文
           e.stopPropagation();
           setEditingKey(key);
-          setDraft(value);
         }}
         className={active ? "cursor-text rounded-sm hover:bg-amber-50" : undefined}
         title={active ? "点击编辑" : undefined}
