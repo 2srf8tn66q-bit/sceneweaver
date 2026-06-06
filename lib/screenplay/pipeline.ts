@@ -1,21 +1,22 @@
-// 生成 pipeline：段落编号 → Call 1 理解 → Call 2 改编 → 代码质检 → 失败把错误喂回 LLM 修 1 次。
-// LLM 以参数注入（LLMCall），pipeline 本身不依赖具体模型，便于测试 mock 与替换。
+// 生成 pipeline：段落编号 → Call 1 理解 → Call 2【分批+并行】改编 → 质检 → 失败修 1 次。
+// 分批的意义：单次调用只写 2-3 场，输出短 → 不超时/不断连；各批并行 → 提速；
+// 各批共享 Call 1 的全局人物表 → 跨场一致。LLM 以 LLMCall 注入，便于测试。
 
 import type { ChatMessage } from "../llm/types";
 import type { Screenplay, Character } from "./types";
 import { splitParagraphs, toNumberedText, sliceParagraphs } from "./paragraphs";
 import { buildUnderstandMessages, buildAdaptMessages, buildRepairMessages, type SceneText } from "./prompts";
-import { safeParseJSON, extractJSON } from "../llm/json";
+import { safeParseJSON } from "../llm/json";
 import { validateScreenplay, type ValidationResult } from "./validate";
 
-/** 注入的 LLM 调用：给一组消息，返回回复文本。 */
 export type LLMCall = (messages: ChatMessage[]) => Promise<string>;
 
 export interface GenerateResult {
   screenplay: Screenplay | null; // 质检通过才有
   validation: ValidationResult;
-  raw: string; // 最后一次 Call 2 / 修复的原始文本（调试用）
-  repaired: boolean; // 是否经过一次修复
+  scenes: number; // 生成的场数
+  batches: number; // Call 2 分了几批
+  repaired: boolean;
 }
 
 interface UnderstandOutput {
@@ -23,35 +24,71 @@ interface UnderstandOutput {
   scenes: { paragraph_range: [number, number]; synopsis?: string }[];
 }
 
+/** 把分场按原文字数打包成批：整场不拆，单场超预算则自成一批。 */
+export function batchScenes(scenes: SceneText[], charBudget = 2500): SceneText[][] {
+  const batches: SceneText[][] = [];
+  let cur: SceneText[] = [];
+  let curLen = 0;
+  for (const s of scenes) {
+    if (cur.length > 0 && curLen + s.text.length > charBudget) {
+      batches.push(cur);
+      cur = [];
+      curLen = 0;
+    }
+    cur.push(s);
+    curLen += s.text.length;
+  }
+  if (cur.length > 0) batches.push(cur);
+  return batches;
+}
+
+/** 带并发上限的并行 map（不引第三方库的轻量实现）。 */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length || 1) }, worker));
+  return results;
+}
+
 export async function generateScreenplay(
   novel: string,
   call: LLMCall,
-  opts: { title?: string } = {},
+  opts: { title?: string; concurrency?: number; charBudget?: number } = {},
 ): Promise<GenerateResult> {
-  // 1) 段落编号
   const paras = splitParagraphs(novel);
 
-  // 2) Call 1：理解（人物表 + 分场）
+  // 1) Call 1：理解（人物表 + 分场）
   const understandRaw = await call(buildUnderstandMessages(toNumberedText(paras)));
   const understand = safeParseJSON<UnderstandOutput>(understandRaw, { characters: [], scenes: [] });
 
-  // 3) 组装每场原文
   const sceneTexts: SceneText[] = understand.scenes.map((s, i) => ({
     number: i + 1,
     range: s.paragraph_range,
     text: sliceParagraphs(paras, s.paragraph_range),
   }));
 
-  // 4) Call 2：改编
-  let raw = await call(buildAdaptMessages(understand.characters, sceneTexts));
-  let parsed = assemble(understand.characters, raw, opts);
+  // 2) Call 2：分批 + 并行改编（每批输出短，不超时；共享人物表保一致）
+  const batches = batchScenes(sceneTexts, opts.charBudget ?? 2500);
+  const perBatch = await mapLimit(batches, opts.concurrency ?? 3, async (batch) => {
+    const raw = await call(buildAdaptMessages(understand.characters, batch));
+    return safeParseJSON<{ scenes?: unknown[] }>(raw, { scenes: [] }).scenes ?? [];
+  });
+  let scenes: unknown[] = perBatch.flat();
+
+  // 3) 质检 + 修复：代码当裁判，LLM 当修理工（最多 1 次）
+  let parsed = assemble(understand.characters, scenes, opts);
   let validation = validateScreenplay(parsed);
   let repaired = false;
-
-  // 5) 自检 + 修复：代码当裁判找出硬错误 → LLM 当修理工只修这些（最多 1 次）
   if (!validation.valid) {
-    raw = await call(buildRepairMessages(extractJSON(raw), validation.errors));
-    parsed = assemble(understand.characters, raw, opts);
+    const repairRaw = await call(buildRepairMessages(JSON.stringify({ scenes }), validation.errors));
+    scenes = safeParseJSON<{ scenes?: unknown[] }>(repairRaw, { scenes }).scenes ?? scenes;
+    parsed = assemble(understand.characters, scenes, opts);
     validation = validateScreenplay(parsed);
     repaired = true;
   }
@@ -59,17 +96,17 @@ export async function generateScreenplay(
   return {
     screenplay: validation.valid ? (parsed as Screenplay) : null,
     validation,
-    raw,
+    scenes: scenes.length,
+    batches: batches.length,
     repaired,
   };
 }
 
-/** 把 Call 1 的人物表与 Call 2 的 {scenes:[...]} 拼成完整 Screenplay 对象。 */
-function assemble(characters: Character[], adaptRaw: string, opts: { title?: string }): unknown {
-  const adapt = safeParseJSON<{ scenes?: unknown[] }>(adaptRaw, { scenes: [] });
+/** 把 Call 1 的人物表与各批场景拼成完整 Screenplay 对象。 */
+function assemble(characters: Character[], scenes: unknown[], opts: { title?: string }): unknown {
   return {
     meta: { title: opts.title ?? "未命名剧本" },
     characters,
-    scenes: adapt.scenes ?? [],
+    scenes,
   };
 }
