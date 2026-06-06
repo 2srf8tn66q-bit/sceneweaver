@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
 import SceneCard from "@/components/SceneCard";
@@ -10,17 +10,7 @@ import { toYaml } from "@/lib/screenplay/yaml";
 import { renderCn } from "@/lib/screenplay/render";
 import type { Screenplay, Scene } from "@/lib/screenplay/types";
 import type { ValidationResult } from "@/lib/screenplay/validate";
-
-const emptySubscribe = () => () => {};
-
-/** 读取导入页存入 sessionStorage 的小说草稿（SSR 安全，无水合不匹配）。 */
-function useDraftNovel(): string {
-  return useSyncExternalStore(
-    emptySubscribe,
-    () => sessionStorage.getItem("sceneweaver.draftNovel") ?? "",
-    () => "",
-  );
-}
+import { getProject, saveProject, type Project } from "@/lib/projects";
 
 /** 在浏览器触发一次文本文件下载。 */
 function downloadText(filename: string, content: string) {
@@ -36,7 +26,7 @@ function downloadText(filename: string, content: string) {
 }
 
 export default function Workbench({ id }: { id: string }) {
-  const novel = useDraftNovel();
+  const [project, setProject] = useState<Project | null>(null);
   const [screenplay, setScreenplay] = useState<Screenplay | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +35,19 @@ export default function Workbench({ id }: { id: string }) {
   const [exportOpen, setExportOpen] = useState(false);
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
 
+  useEffect(() => {
+    let alive = true;
+    getProject(id).then((p) => {
+      if (!alive) return;
+      setProject(p ?? null);
+      if (p?.screenplay) setScreenplay(p.screenplay);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [id]);
+
+  const novel = project?.novel ?? "";
   const paras = novel ? splitParagraphs(novel) : [];
   const activeRange =
     screenplay?.scenes.find((s) => s.id === activeSceneId)?.source?.paragraph_range ?? null;
@@ -77,6 +80,16 @@ export default function Workbench({ id }: { id: string }) {
       };
       if (result.screenplay && result.screenplay.scenes.length > 0) {
         setScreenplay(result.screenplay);
+        if (project) {
+          const updated: Project = {
+            ...project,
+            screenplay: result.screenplay,
+            title: result.screenplay.meta.title || project.title,
+            updatedAt: new Date().toISOString(),
+          };
+          setProject(updated);
+          await saveProject(updated);
+        }
         if (!result.validation.valid) {
           setNotice(
             `生成完成，但有 ${result.validation.errors.length} 处待确认（已渲染，可手动调整）：` +
@@ -117,7 +130,7 @@ export default function Workbench({ id }: { id: string }) {
             ← 我的剧本
           </Link>
           <span className="font-medium">工作台</span>
-          <span className="text-neutral-400">项目 {id}</span>
+          <span className="text-neutral-400">{project?.title ?? "…"}</span>
         </div>
         <div className="flex items-center gap-2">
           <button
