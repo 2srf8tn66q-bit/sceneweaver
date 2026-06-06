@@ -49,9 +49,9 @@ export default function SceneCard({
       style={t.color ? { borderLeft: `3px solid ${t.color}` } : undefined}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2 text-sm">
-          <span className="text-neutral-400">{scene.number}</span>
-          <span className="truncate tracking-wide text-neutral-500">{slug}</span>
+        <div className="flex min-w-0 items-baseline gap-2">
+          <span className="text-[15px] font-bold italic text-neutral-300">{scene.number}</span>
+          <span className="truncate font-serif text-[15px] font-bold italic tracking-wide text-neutral-800">{slug}</span>
         </div>
         {tier !== "reliable" && (
           <div className="flex flex-none items-center gap-2">
@@ -131,7 +131,7 @@ export default function SceneCard({
       {(scene.source?.paragraph_range || scene.dramatic_function) && (
         <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 border-t border-neutral-100 pt-2 text-[11px] text-neutral-400">
           {scene.source?.paragraph_range && (
-            <span>源自原文 ¶{scene.source.paragraph_range[0]}–{scene.source.paragraph_range[1]}</span>
+            <span>源自原文第{scene.source.paragraph_range[0]}—{scene.source.paragraph_range[1]}段</span>
           )}
           {scene.dramatic_function && <span>推进：{scene.dramatic_function}</span>}
         </div>
