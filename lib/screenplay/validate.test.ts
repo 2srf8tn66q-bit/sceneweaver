@@ -29,6 +29,12 @@ describe("剧本数据质检（validateScreenplay）", () => {
     expect(validateScreenplay(bad).valid).toBe(false);
   });
 
+  it("尺子①形状：内/外景允许 INT/EXT（内外景兼具）", () => {
+    const ok = clone(sampleScreenplay);
+    (ok.scenes[0].heading as { setting: string }).setting = "INT/EXT";
+    expect(validateScreenplay(ok).valid).toBe(true);
+  });
+
   it("尺子①形状：人物表为空 → 被拦下", () => {
     const bad = clone(sampleScreenplay);
     bad.characters = [];

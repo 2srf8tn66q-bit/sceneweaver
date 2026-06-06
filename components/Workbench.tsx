@@ -26,6 +26,7 @@ export default function Workbench({ id }: { id: string }) {
   const [screenplay, setScreenplay] = useState<Screenplay | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const paras = novel ? splitParagraphs(novel) : [];
@@ -40,6 +41,7 @@ export default function Workbench({ id }: { id: string }) {
     if (!novel.trim()) return;
     setGenerating(true);
     setError(null);
+    setNotice(null);
     try {
       const result = await generateScreenplay(
         novel,
@@ -48,11 +50,14 @@ export default function Workbench({ id }: { id: string }) {
       );
       if (result.screenplay) {
         setScreenplay(result.screenplay);
+        if (!result.validation.valid) {
+          setNotice(
+            `生成完成，但有 ${result.validation.errors.length} 处待确认（已渲染，可手动调整）：` +
+              result.validation.errors.slice(0, 3).map((e) => e.message).join("；"),
+          );
+        }
       } else {
-        setError(
-          "生成结果未通过校验：" +
-            result.validation.errors.slice(0, 3).map((e) => e.message).join("；"),
-        );
+        setError("没能生成出有效场景，请重试或换一段文本。");
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "生成失败");
@@ -93,6 +98,9 @@ export default function Workbench({ id }: { id: string }) {
 
       {error && (
         <div className="border-b border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700">{error}</div>
+      )}
+      {notice && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">{notice}</div>
       )}
 
       <div className="flex flex-1 overflow-hidden">

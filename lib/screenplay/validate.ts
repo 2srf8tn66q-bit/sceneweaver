@@ -17,7 +17,7 @@ export interface ValidationResult {
   warnings: ValidationIssue[]; // 尺子③ → 标红
 }
 
-const SETTINGS = ["INT", "EXT"];
+const SETTINGS = ["INT", "EXT", "INT/EXT"];
 const TIMES = ["DAY", "NIGHT", "DUSK", "DAWN", "CONTINUOUS", "LATER"];
 const ELEMENT_TYPES = ["action", "dialogue", "dual_dialogue", "transition"];
 const DIALOGUE_MODES = ["in_scene", "voiceover", "off_screen"];

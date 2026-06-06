@@ -11,7 +11,7 @@ const TIER = {
   doubtful: { color: "#B4654A", label: "存疑" },
 } as const;
 
-const SETTING_CN: Record<string, string> = { INT: "内", EXT: "外" };
+const SETTING_CN: Record<string, string> = { INT: "内", EXT: "外", "INT/EXT": "内/外" };
 const TIME_CN: Record<string, string> = {
   DAY: "日",
   NIGHT: "夜",
@@ -26,8 +26,8 @@ export default function SceneCard({ scene, characters }: { scene: Scene; charact
   const conf = scene.review?.confidence ?? 1;
   const tier = confidenceTier(conf);
   const t = TIER[tier];
-  const h = scene.heading;
-  const slug = `${TIME_CN[h.time] ?? h.time}　${SETTING_CN[h.setting] ?? h.setting}　${h.location}`;
+  const h = scene.heading ?? { setting: "INT" as const, location: "", time: "DAY" as const };
+  const slug = `${TIME_CN[h.time] ?? h.time ?? ""}　${SETTING_CN[h.setting] ?? h.setting ?? ""}　${h.location ?? ""}`;
   const pct = Math.round(conf * 100);
 
   return (
@@ -65,7 +65,7 @@ export default function SceneCard({ scene, characters }: { scene: Scene; charact
       {scene.synopsis && <p className="mb-2 text-xs text-neutral-500">{scene.synopsis}</p>}
 
       <div className="space-y-1.5 text-[13.5px]">
-        {scene.elements.map((el, i) => {
+        {(scene.elements ?? []).map((el, i) => {
           if (el.type === "action") {
             return (
               <p key={i} className="text-neutral-600">

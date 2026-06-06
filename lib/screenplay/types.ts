@@ -3,7 +3,7 @@
 // 这样 YAML 导出就是把对象直接 dump，无需额外的映射层。
 
 export type RenderFormat = "cn" | "us";
-export type Setting = "INT" | "EXT";
+export type Setting = "INT" | "EXT" | "INT/EXT";
 export type TimeOfDay = "DAY" | "NIGHT" | "DUSK" | "DAWN" | "CONTINUOUS" | "LATER";
 export type CharacterRole = "protagonist" | "supporting" | "minor";
 export type DialogueMode = "in_scene" | "voiceover" | "off_screen";

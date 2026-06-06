@@ -4,7 +4,7 @@
 
 import type { Screenplay, Setting } from "./types";
 
-const SETTING_CN: Record<Setting, string> = { INT: "内", EXT: "外" };
+const SETTING_CN: Record<Setting, string> = { INT: "内", EXT: "外", "INT/EXT": "内/外" };
 const TIME_CN: Record<string, string> = {
   DAY: "日",
   NIGHT: "夜",
