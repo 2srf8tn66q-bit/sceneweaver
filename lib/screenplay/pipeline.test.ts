@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { generateScreenplay, type LLMCall } from "./pipeline";
+import { generateScreenplay, batchScenes, type LLMCall } from "./pipeline";
+import type { SceneText } from "./prompts";
 
 // 假 LLM：根据系统提示词内容判断是 Call1 / Call2 / 修复，返回预设 JSON
 function makeFakeLLM(call1: string, call2: string, repair?: string): LLMCall {
@@ -74,5 +75,22 @@ describe("生成 pipeline（generateScreenplay）", () => {
     const r = await generateScreenplay(novel, makeFakeLLM(call1, badCall2, fixed));
     expect(r.repaired).toBe(true);
     expect(r.validation.valid).toBe(true);
+  });
+});
+
+describe("分批 batchScenes", () => {
+  const mk = (n: number, len: number): SceneText => ({ number: n, range: [n, n], text: "字".repeat(len) });
+
+  it("按字数预算把整场打包成批（整场不拆）", () => {
+    const batches = batchScenes([mk(1, 1000), mk(2, 1000), mk(3, 1000), mk(4, 1000)], 2500);
+    expect(batches.map((b) => b.map((s) => s.number))).toEqual([
+      [1, 2],
+      [3, 4],
+    ]);
+  });
+
+  it("单场超预算时自成一批，不拆", () => {
+    const batches = batchScenes([mk(1, 4000), mk(2, 500)], 2500);
+    expect(batches.map((b) => b.length)).toEqual([1, 1]);
   });
 });
