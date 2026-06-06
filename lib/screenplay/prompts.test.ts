@@ -17,6 +17,8 @@ describe("prompt 构造器", () => {
     const all = msgs.map((m) => m.content).join("\n");
     expect(all).toContain("char_lin");
     expect(all).toContain("from_internal");
+    expect(all).toContain("dramatic_function");
+    expect(all).toContain("synopsis");
     expect(all).toContain("0.7"); // 需复核红线
     expect(all).toContain("林夏走进来。");
   });
