@@ -21,7 +21,17 @@ const TIME_CN: Record<string, string> = {
   LATER: "稍后",
 };
 
-export default function SceneCard({ scene, characters }: { scene: Scene; characters: Character[] }) {
+export default function SceneCard({
+  scene,
+  characters,
+  onSelect,
+  active,
+}: {
+  scene: Scene;
+  characters: Character[];
+  onSelect?: () => void;
+  active?: boolean;
+}) {
   const nameOf = (id: string) => characters.find((c) => c.id === id)?.name ?? id;
   const conf = scene.review?.confidence ?? 1;
   const tier = confidenceTier(conf);
@@ -32,7 +42,10 @@ export default function SceneCard({ scene, characters }: { scene: Scene; charact
 
   return (
     <div
-      className="rounded-xl border border-neutral-200 bg-white p-4 shadow-sm"
+      onClick={onSelect}
+      className={`rounded-xl border bg-white p-4 shadow-sm ${
+        onSelect ? "cursor-pointer transition hover:shadow-md" : ""
+      } ${active ? "border-neutral-400 ring-2 ring-neutral-300" : "border-neutral-200"}`}
       style={t.color ? { borderLeft: `3px solid ${t.color}` } : undefined}
     >
       <div className="mb-2 flex items-center justify-between gap-3">
@@ -44,6 +57,7 @@ export default function SceneCard({ scene, characters }: { scene: Scene; charact
           <div className="flex flex-none items-center gap-2">
             {tier === "doubtful" && (
               <button
+                onClick={(e) => e.stopPropagation()}
                 className="rounded-md border px-2 py-0.5 text-[11px]"
                 style={{ color: t.color, borderColor: "#E6C7BB" }}
               >

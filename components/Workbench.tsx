@@ -8,7 +8,7 @@ import { loadLLMConfig } from "@/lib/config";
 import { splitParagraphs } from "@/lib/screenplay/paragraphs";
 import { toYaml } from "@/lib/screenplay/yaml";
 import { renderCn } from "@/lib/screenplay/render";
-import type { Screenplay } from "@/lib/screenplay/types";
+import type { Screenplay, Scene } from "@/lib/screenplay/types";
 import type { ValidationResult } from "@/lib/screenplay/validate";
 
 const emptySubscribe = () => () => {};
@@ -43,8 +43,11 @@ export default function Workbench({ id }: { id: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
 
   const paras = novel ? splitParagraphs(novel) : [];
+  const activeRange =
+    screenplay?.scenes.find((s) => s.id === activeSceneId)?.source?.paragraph_range ?? null;
 
   async function generate() {
     const config = loadLLMConfig();
@@ -96,6 +99,14 @@ export default function Workbench({ id }: { id: string }) {
     if (format === "yaml") downloadText(`${base}.yaml`, toYaml(screenplay));
     else downloadText(`${base}.txt`, renderCn(screenplay));
     setExportOpen(false);
+  }
+
+  function selectScene(scene: Scene) {
+    setActiveSceneId(scene.id);
+    const start = scene.source?.paragraph_range?.[0];
+    if (start != null) {
+      document.getElementById(`para-${start}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
   }
 
   return (
@@ -166,7 +177,13 @@ export default function Workbench({ id }: { id: string }) {
           {screenplay ? (
             <ul className="space-y-1">
               {screenplay.scenes.map((s) => (
-                <li key={s.id} className="truncate text-neutral-600">
+                <li
+                  key={s.id}
+                  onClick={() => selectScene(s)}
+                  className={`cursor-pointer truncate hover:text-neutral-900 ${
+                    s.id === activeSceneId ? "font-medium text-neutral-900" : "text-neutral-600"
+                  }`}
+                >
                   第{s.number}场 · {s.heading.location}
                 </li>
               ))}
@@ -180,12 +197,19 @@ export default function Workbench({ id }: { id: string }) {
           <p className="mb-2 text-xs font-medium tracking-wide text-neutral-400 uppercase">原文</p>
           {paras.length ? (
             <div className="space-y-2 text-sm leading-relaxed text-neutral-700">
-              {paras.map((p) => (
-                <p key={p.n}>
-                  <span className="mr-2 align-top text-xs text-neutral-300">{p.n}</span>
-                  {p.text}
-                </p>
-              ))}
+              {paras.map((p) => {
+                const on = activeRange != null && p.n >= activeRange[0] && p.n <= activeRange[1];
+                return (
+                  <p
+                    key={p.n}
+                    id={`para-${p.n}`}
+                    className={on ? "-mx-1 rounded bg-amber-100 px-1" : undefined}
+                  >
+                    <span className="mr-2 align-top text-xs text-neutral-300">{p.n}</span>
+                    {p.text}
+                  </p>
+                );
+              })}
             </div>
           ) : (
             <p className="text-neutral-400">
@@ -202,7 +226,13 @@ export default function Workbench({ id }: { id: string }) {
           {screenplay ? (
             <div className="space-y-3">
               {screenplay.scenes.map((s) => (
-                <SceneCard key={s.id} scene={s} characters={screenplay.characters} />
+                <SceneCard
+                  key={s.id}
+                  scene={s}
+                  characters={screenplay.characters}
+                  onSelect={() => selectScene(s)}
+                  active={s.id === activeSceneId}
+                />
               ))}
             </div>
           ) : (
