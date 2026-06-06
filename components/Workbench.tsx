@@ -6,6 +6,8 @@ import SettingsModal from "@/components/SettingsModal";
 import SceneCard from "@/components/SceneCard";
 import { loadLLMConfig } from "@/lib/config";
 import { splitParagraphs } from "@/lib/screenplay/paragraphs";
+import { toYaml } from "@/lib/screenplay/yaml";
+import { renderCn } from "@/lib/screenplay/render";
 import type { Screenplay } from "@/lib/screenplay/types";
 import type { ValidationResult } from "@/lib/screenplay/validate";
 
@@ -20,6 +22,19 @@ function useDraftNovel(): string {
   );
 }
 
+/** 在浏览器触发一次文本文件下载。 */
+function downloadText(filename: string, content: string) {
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function Workbench({ id }: { id: string }) {
   const novel = useDraftNovel();
   const [screenplay, setScreenplay] = useState<Screenplay | null>(null);
@@ -27,6 +42,7 @@ export default function Workbench({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const paras = novel ? splitParagraphs(novel) : [];
 
@@ -74,6 +90,14 @@ export default function Workbench({ id }: { id: string }) {
     }
   }
 
+  function exportAs(format: "cn" | "yaml") {
+    if (!screenplay) return;
+    const base = (screenplay.meta.title || "剧本").replace(/[\\/:*?"<>|]/g, "_");
+    if (format === "yaml") downloadText(`${base}.yaml`, toYaml(screenplay));
+    else downloadText(`${base}.txt`, renderCn(screenplay));
+    setExportOpen(false);
+  }
+
   return (
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 text-sm">
@@ -98,9 +122,34 @@ export default function Workbench({ id }: { id: string }) {
           >
             {generating ? "生成中…" : "一键生成"}
           </button>
-          <button className="rounded border border-neutral-300 px-2.5 py-1 disabled:opacity-40" disabled>
-            导出
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setExportOpen((v) => !v)}
+              disabled={!screenplay}
+              className="rounded border border-neutral-300 px-2.5 py-1 hover:bg-neutral-100 disabled:opacity-40"
+            >
+              导出
+            </button>
+            {exportOpen && screenplay && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setExportOpen(false)} />
+                <div className="absolute right-0 z-20 mt-1 w-44 rounded border border-neutral-200 bg-white py-1 shadow-lg">
+                  <button
+                    onClick={() => exportAs("cn")}
+                    className="block w-full px-3 py-1.5 text-left hover:bg-neutral-100"
+                  >
+                    国内排版（.txt）
+                  </button>
+                  <button
+                    onClick={() => exportAs("yaml")}
+                    className="block w-full px-3 py-1.5 text-left hover:bg-neutral-100"
+                  >
+                    YAML（.yaml）
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
