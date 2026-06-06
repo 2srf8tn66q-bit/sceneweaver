@@ -9,7 +9,7 @@ describe("prompt 构造器", () => {
     expect(msgs[0].content).toContain("只输出 JSON");
   });
 
-  it("Call2 改编：含人物 id、confidence 红线、from_internal 规则", () => {
+  it("Call2 改编：含人物 id、from_internal、V.O. 技法、描述性 confidence", () => {
     const msgs = buildAdaptMessages(
       [{ id: "char_lin", name: "林夏", aliases: ["小夏"] }],
       [{ number: 1, range: [1, 3], text: "林夏走进来。" }],
@@ -19,7 +19,8 @@ describe("prompt 构造器", () => {
     expect(all).toContain("from_internal");
     expect(all).toContain("dramatic_function");
     expect(all).toContain("synopsis");
-    expect(all).toContain("0.7"); // 需复核红线
+    expect(all).toContain("画外音"); // 开场 V.O. 技法
+    expect(all).toContain("不是对错评分"); // confidence 改为描述性、非评价
     expect(all).toContain("林夏走进来。");
   });
 

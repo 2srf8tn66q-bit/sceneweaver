@@ -42,6 +42,8 @@ export function buildAdaptMessages(characters: Character[], scenes: SceneText[])
 2. 不照搬原句，按人物口吻重写台词；
 3. 只保留镜头能拍、观众能看能听的内容。
 
+处理铺垫与过渡：遇到开场或大段内心独白 / 背景交代，不要直接丢弃——可处理成"开场画外音(V.O.) + 蒙太奇"的一场（角色 V.O. 叙述，画面闪过相关场景），或外化进邻近场景。当补一段过渡戏能让剧情更顺时，鼓励你大胆生成，这类由你补足的内容是有价值的。
+
 硬性要求：
 - 对白 character 只能用给定人物表里的 id，不得新造；
 - heading.setting 仅 INT 或 EXT；time 仅 DAY/NIGHT/DUSK/DAWN/CONTINUOUS/LATER；
@@ -49,12 +51,12 @@ export function buildAdaptMessages(characters: Character[], scenes: SceneText[])
 - 动作若由原文内心戏外化而来，给该 action 加 "from_internal": true（可选 "note" 说明从哪外化）；
 - 每场必须给 synopsis(一句话梗概)、dramatic_function(本场推进了什么、做了哪 2-3 件事)、source(来自原文的段落区间) 与 confidence(0~1)。
 
-confidence 判分（出现任一情况必须扣到 0.7 以下，0.7 是"需人工复核"红线）：
-- 原文信息不足、你做了较多脑补/虚构；
-- 不确定某句话归谁说、"他/她"指代不清；
-- 原文是大段心理/抒情/意识流，缺可视听化动作；
-- 地点或时间原文没明说、是你推断的。
-分档：0.9~1.0 近乎直译式、很有把握；0.7~0.9 基本可靠少量推断；0.4~0.7 明显不确定→需复核；<0.4 大量虚构、很可能出错。
+confidence(0~1) 是你对这一场"有多贴近原文 / 自己补足了多少"的诚实标注，给作者参考——它不是对错评分，低分既不扣分、也不代表错误：
+- 0.85~1.0：近乎直译式转换、原文信息充分；
+- 0.6~0.85：有合理推断、少量补充；
+- 0.4~0.6：较多由你创造/补足的过渡或开场处理（这是好事，照常生成，只是如实标低，让作者知道这是你加的）；
+- <0.4：你也吃不准、可能离题。
+重要：不要因为某段会得低分就略过它——该补的过渡、该有的开场处理，请照常生成并诚实给分。
 
 严格按此 JSON 结构输出，不要解释：
 {"scenes":[{"id":"scene_001","number":1,"heading":{"setting":"INT","location":"地点","time":"DAY"},"synopsis":"一句梗概","dramatic_function":"本场推进了什么","source":{"chapter":1,"paragraph_range":[1,5]},"elements":[{"type":"action","text":"…","from_internal":true},{"type":"dialogue","character":"char_lin","line":"…"}],"review":{"status":"generated","confidence":0.8}}]}`;
