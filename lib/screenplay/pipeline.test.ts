@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateScreenplay, batchScenes, type LLMCall } from "./pipeline";
+import { generateScreenplay, batchScenes, mapLimit, type LLMCall } from "./pipeline";
 import type { SceneText } from "./prompts";
 
 // 假 LLM：根据系统提示词内容判断是 Call1 / Call2 / 修复，返回预设 JSON
@@ -141,5 +141,19 @@ describe("分批 batchScenes", () => {
   it("单场超预算时自成一批，不拆", () => {
     const batches = batchScenes([mk(1, 4000), mk(2, 500)], 2500);
     expect(batches.map((b) => b.length)).toEqual([1, 1]);
+  });
+});
+
+describe("mapLimit 并发", () => {
+  it("并发上限生效：最多同时 limit 个（确认是并行不是串行）", async () => {
+    let active = 0;
+    let maxActive = 0;
+    await mapLimit([1, 2, 3, 4, 5, 6], 3, async () => {
+      active++;
+      maxActive = Math.max(maxActive, active);
+      await new Promise((r) => setTimeout(r, 10));
+      active--;
+    });
+    expect(maxActive).toBe(3); // 串行会是 1，无上限会是 6
   });
 });
