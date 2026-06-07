@@ -14,8 +14,9 @@ export default function HomePage() {
   const [showSplash, setShowSplash] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const seen = localStorage.getItem(SPLASH_KEY);
-    setShowSplash(!seen);
+    // 一次性从 localStorage 读启动页是否展示过
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setShowSplash(!localStorage.getItem(SPLASH_KEY));
     getAllProjects().then(setProjects);
   }, []);
 
