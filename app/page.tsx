@@ -3,19 +3,36 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
+import SplashScreen from "@/components/SplashScreen";
 import { getAllProjects, deleteProject, type Project } from "@/lib/projects";
+
+const SPLASH_KEY = "sceneweaver.splashSeen";
 
 export default function HomePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [projects, setProjects] = useState<Project[] | null>(null);
+  const [showSplash, setShowSplash] = useState<boolean | null>(null);
 
   useEffect(() => {
+    const seen = localStorage.getItem(SPLASH_KEY);
+    setShowSplash(!seen);
     getAllProjects().then(setProjects);
   }, []);
+
+  function dismissSplash() {
+    setShowSplash(false);
+    localStorage.setItem(SPLASH_KEY, "1");
+  }
 
   async function remove(id: string) {
     await deleteProject(id);
     setProjects((ps) => (ps ? ps.filter((p) => p.id !== id) : ps));
+  }
+
+  if (showSplash === null) return null;
+
+  if (showSplash) {
+    return <SplashScreen onEnter={dismissSplash} />;
   }
 
   return (
