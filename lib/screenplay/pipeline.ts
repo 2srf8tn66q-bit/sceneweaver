@@ -60,21 +60,32 @@ export async function mapLimit<T, R>(
   return results;
 }
 
+export interface Progress {
+  stage: string;
+  pct: number;
+  msg: string;
+}
+
 export async function generateScreenplay(
   novel: string,
   call: LLMCall,
-  opts: { title?: string; concurrency?: number; charBudget?: number; onLog?: (msg: string) => void } = {},
+  opts: { title?: string; concurrency?: number; charBudget?: number; onLog?: (msg: string) => void; onProgress?: (p: Progress) => void } = {},
 ): Promise<GenerateResult> {
   const log = opts.onLog ?? (() => {});
+  const prog = opts.onProgress ?? (() => {});
   const t0 = Date.now();
   const paras = splitParagraphs(novel);
   log(`原文分 ${paras.length} 段`);
 
   // 1) Call 1：理解（人物表 + 分场）
+  prog({ stage: "理解", pct: 5, msg: "正在通读全书…" });
   log("Call1 理解 开始…");
   const understandRaw = await call(buildUnderstandMessages(toNumberedText(paras)));
   const understand = safeParseJSON<UnderstandOutput>(understandRaw, { characters: [], scenes: [] });
-  log(`Call1 完成 ${Date.now() - t0}ms：${understand.characters.length} 人物 / ${understand.scenes.length} 分场`);
+  const charCount = understand.characters.length;
+  const sceneCount = understand.scenes.length;
+  log(`Call1 完成 ${Date.now() - t0}ms：${charCount} 人物 / ${sceneCount} 分场`);
+  prog({ stage: "理解", pct: 15, msg: `识别人物 ${charCount} 人，切分 ${sceneCount} 场` });
 
   const sceneTexts: SceneText[] = understand.scenes.map((s, i) => ({
     number: i + 1,
@@ -82,27 +93,32 @@ export async function generateScreenplay(
     text: sliceParagraphs(paras, s.paragraph_range),
   }));
 
-  // 2) Call 2：分批 + 并行改编（每批输出短，不超时；共享人物表保一致）
+  // 2) Call 2：分批 + 并行改编
   const batches = batchScenes(sceneTexts, opts.charBudget ?? 2500);
   const conc = opts.concurrency ?? 12;
   log(`Call2 改编：${batches.length} 批，并发 ${conc}`);
   const t2 = Date.now();
+  let completed = 0;
   const perBatch = await mapLimit(batches, conc, async (batch, idx) => {
     const bt = Date.now();
     log(`  批 ${idx + 1}/${batches.length} 开始（${batch.length} 场）`);
     const raw = await call(buildAdaptMessages(understand.characters, batch));
     log(`  批 ${idx + 1}/${batches.length} 完成 ${Date.now() - bt}ms`);
+    completed++;
+    prog({ stage: "改编", pct: 15 + Math.round((completed / batches.length) * 75), msg: `第 ${completed}/${batches.length} 批改编完成` });
     return safeParseJSON<{ scenes?: unknown[] }>(raw, { scenes: [] }).scenes ?? [];
   });
   log(`Call2 全部完成 ${Date.now() - t2}ms`);
   let scenes: unknown[] = renumber(perBatch.flat());
 
-  // 3) 质检 + 修复：代码当裁判，LLM 当修理工（最多 1 次）
+  // 3) 质检 + 修复
+  prog({ stage: "质检", pct: 92, msg: "正在检查剧本质量…" });
   let parsed = assemble(understand.characters, scenes, opts);
   let validation = validateScreenplay(parsed);
   let repairs = 0;
   const MAX_REPAIRS = 1;
   while (!validation.valid && repairs < MAX_REPAIRS) {
+    prog({ stage: "质检", pct: 95, msg: `修复 ${validation.errors.length} 处问题…` });
     log(`质检未过（${validation.errors.length} 错），修复第 ${repairs + 1} 次…`);
     const repairRaw = await call(buildRepairMessages(JSON.stringify({ scenes }), validation.errors));
     scenes = renumber(safeParseJSON<{ scenes?: unknown[] }>(repairRaw, { scenes }).scenes ?? scenes);
@@ -110,6 +126,7 @@ export async function generateScreenplay(
     validation = validateScreenplay(parsed);
     repairs++;
   }
+  prog({ stage: "完成", pct: 100, msg: `生成 ${scenes.length} 场剧本` });
   log(`完成：${scenes.length} 场，总耗时 ${Date.now() - t0}ms，质检${validation.valid ? "通过" : "有残留"}`);
 
   // 最大努力返回：即使仍有残留问题，也把剧本交回去（渲染 + 标注），不丢弃整份结果。

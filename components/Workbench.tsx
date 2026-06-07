@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
 import SceneCard from "@/components/SceneCard";
+import GeneratingOverlay from "@/components/GeneratingOverlay";
 import { loadLLMConfig } from "@/lib/config";
 import { splitParagraphs } from "@/lib/screenplay/paragraphs";
 import { toYaml } from "@/lib/screenplay/yaml";
 import { renderCn } from "@/lib/screenplay/render";
+import type { GenerateResult } from "@/lib/screenplay/pipeline";
 import type { Screenplay, Scene } from "@/lib/screenplay/types";
-import type { ValidationResult } from "@/lib/screenplay/validate";
 import { getProject, saveProject, type Project } from "@/lib/projects";
 
 /** 在浏览器触发一次文本文件下载。 */
@@ -52,7 +53,7 @@ export default function Workbench({ id }: { id: string }) {
   const activeRange =
     screenplay?.scenes.find((s) => s.id === activeSceneId)?.source?.paragraph_range ?? null;
 
-  async function generate() {
+  function startGenerate() {
     const config = loadLLMConfig();
     if (!config.apiKey) {
       setError("请先在「设置」里填入 API Key");
@@ -60,49 +61,33 @@ export default function Workbench({ id }: { id: string }) {
       return;
     }
     if (!novel.trim()) return;
-    setGenerating(true);
     setError(null);
     setNotice(null);
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ novel, config, title: "未命名剧本" }),
-        signal: AbortSignal.timeout(900000),
-      });
-      if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(err.error ?? `生成失败 (${res.status})`);
+    setGenerating(true);
+  }
+
+  async function onGenerateDone(result: GenerateResult) {
+    setGenerating(false);
+    if (result.screenplay && result.screenplay.scenes.length > 0) {
+      setScreenplay(result.screenplay);
+      if (project) {
+        const updated: Project = {
+          ...project,
+          screenplay: result.screenplay,
+          title: result.screenplay.meta.title || project.title,
+          updatedAt: new Date().toISOString(),
+        };
+        setProject(updated);
+        await saveProject(updated);
       }
-      const result = (await res.json()) as {
-        screenplay: Screenplay | null;
-        validation: ValidationResult;
-      };
-      if (result.screenplay && result.screenplay.scenes.length > 0) {
-        setScreenplay(result.screenplay);
-        if (project) {
-          const updated: Project = {
-            ...project,
-            screenplay: result.screenplay,
-            title: result.screenplay.meta.title || project.title,
-            updatedAt: new Date().toISOString(),
-          };
-          setProject(updated);
-          await saveProject(updated);
-        }
-        if (!result.validation.valid) {
-          setNotice(
-            `生成完成，但有 ${result.validation.errors.length} 处待确认（已渲染，可手动调整）：` +
-              result.validation.errors.slice(0, 3).map((e) => e.message).join("；"),
-          );
-        }
-      } else {
-        setError("没能生成出有效场景，请重试或换一段文本。");
+      if (!result.validation.valid) {
+        setNotice(
+          `生成完成，但有 ${result.validation.errors.length} 处待确认（已渲染，可手动调整）：` +
+            result.validation.errors.slice(0, 3).map((e) => e.message).join("；"),
+        );
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "生成失败");
-    } finally {
-      setGenerating(false);
+    } else {
+      setError("没能生成出有效场景，请重试或换一段文本。");
     }
   }
 
@@ -156,7 +141,7 @@ export default function Workbench({ id }: { id: string }) {
             ⚙ 设置
           </button>
           <button
-            onClick={generate}
+            onClick={startGenerate}
             disabled={generating || !novel.trim()}
             className="rounded bg-neutral-900 px-2.5 py-1 text-white hover:bg-neutral-700 disabled:opacity-40"
           >
@@ -273,6 +258,16 @@ export default function Workbench({ id }: { id: string }) {
       </div>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+
+      {generating && (
+        <GeneratingOverlay
+          novel={novel}
+          config={loadLLMConfig()}
+          title={project?.title ?? "未命名剧本"}
+          onDone={onGenerateDone}
+          onCancel={() => setGenerating(false)}
+        />
+      )}
     </div>
   );
 }
