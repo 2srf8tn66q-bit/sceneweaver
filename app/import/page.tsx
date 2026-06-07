@@ -7,6 +7,7 @@ import { newProject, saveProject } from "@/lib/projects";
 
 export default function ImportPage() {
   const [text, setText] = useState("");
+  const [fileName, setFileName] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -16,6 +17,8 @@ export default function ImportPage() {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    const name = file.name.replace(/\.[^.]+$/, "");
+    setFileName(name);
     setReading(true);
     setError(null);
     try {
@@ -38,9 +41,9 @@ export default function ImportPage() {
 
   async function start() {
     if (!text.trim()) return;
-    const project = newProject(text);
+    const project = newProject(text, fileName ?? undefined);
     await saveProject(project);
-    router.push(`/project/${project.id}`);
+    router.push(`/project/${project.id}/generating`);
   }
 
   const chars = text.replace(/\s/g, "").length;
