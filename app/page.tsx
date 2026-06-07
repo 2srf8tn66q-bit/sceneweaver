@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
+import SplashScreen from "@/components/SplashScreen";
 import { getAllProjects, deleteProject, type Project } from "@/lib/projects";
 
 export default function HomePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [projects, setProjects] = useState<Project[] | null>(null);
+  const [splashDismissed, setSplashDismissed] = useState(false);
 
   useEffect(() => {
     getAllProjects().then(setProjects);
@@ -16,6 +18,15 @@ export default function HomePage() {
   async function remove(id: string) {
     await deleteProject(id);
     setProjects((ps) => (ps ? ps.filter((p) => p.id !== id) : ps));
+  }
+
+  // 有项目 → 不展示启动页；没项目 → 展示（除非本次已关闭）
+  const showSplash = projects !== null && projects.length === 0 && !splashDismissed;
+
+  if (projects === null) return null;
+
+  if (showSplash) {
+    return <SplashScreen onEnter={() => setSplashDismissed(true)} />;
   }
 
   return (
@@ -42,9 +53,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {projects === null ? (
-        <p className="mt-16 text-center text-sm text-neutral-400">加载中…</p>
-      ) : projects.length === 0 ? (
+      {projects.length === 0 ? (
         <section className="mt-16 flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 py-20 text-center">
           <p className="text-lg font-medium">还没有改编项目</p>
           <p className="mt-2 max-w-md text-sm text-neutral-500">
