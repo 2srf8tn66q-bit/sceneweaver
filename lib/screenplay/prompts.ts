@@ -45,7 +45,7 @@ export function buildAdaptMessages(characters: Character[], scenes: SceneText[])
 
 硬性要求：
 - 对白 character 只能用给定人物表里的 id，不得新造；
-- heading.setting 仅 INT 或 EXT；time 仅 DAY/NIGHT/DUSK/DAWN/CONTINUOUS/LATER；
+- heading.setting 仅 INT 或 EXT；time 仅 DAY 或 NIGHT；
 - elements 有序，每项 type ∈ action / dialogue / dual_dialogue / transition；
 - 动作若由原文内心戏外化而来，给该 action 加 "from_internal": true（可选 "note" 说明从哪外化）；
 - 每场必须给 synopsis(一句话梗概)、dramatic_function(本场推进了什么、做了哪 2-3 件事)、source(来自原文的段落区间) 与 confidence(0~1)。
