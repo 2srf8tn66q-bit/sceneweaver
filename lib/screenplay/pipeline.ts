@@ -20,6 +20,7 @@ export interface GenerateResult {
 }
 
 interface UnderstandOutput {
+  genre?: string[];
   characters: Character[];
   scenes: { paragraph_range: [number, number]; synopsis?: string }[];
 }
@@ -113,7 +114,7 @@ export async function generateScreenplay(
 
   // 3) 质检 + 修复
   prog({ stage: "质检", pct: 92, msg: "正在检查剧本质量…" });
-  let parsed = assemble(understand.characters, scenes, opts);
+  let parsed = assemble(understand, scenes, opts);
   let validation = validateScreenplay(parsed);
   let repairs = 0;
   const MAX_REPAIRS = 1;
@@ -122,7 +123,7 @@ export async function generateScreenplay(
     log(`质检未过（${validation.errors.length} 错），修复第 ${repairs + 1} 次…`);
     const repairRaw = await call(buildRepairMessages(JSON.stringify({ scenes }), validation.errors));
     scenes = renumber(safeParseJSON<{ scenes?: unknown[] }>(repairRaw, { scenes }).scenes ?? scenes);
-    parsed = assemble(understand.characters, scenes, opts);
+    parsed = assemble(understand, scenes, opts);
     validation = validateScreenplay(parsed);
     repairs++;
   }
@@ -149,10 +150,10 @@ function renumber(scenes: unknown[]): unknown[] {
 }
 
 /** 把 Call 1 的人物表与各批场景拼成完整 Screenplay 对象。 */
-function assemble(characters: Character[], scenes: unknown[], opts: { title?: string }): unknown {
+function assemble(understand: UnderstandOutput, scenes: unknown[], opts: { title?: string }): unknown {
   return {
-    meta: { title: opts.title ?? "未命名剧本" },
-    characters,
+    meta: { title: opts.title ?? "未命名剧本", genre: understand.genre },
+    characters: understand.characters,
     scenes,
   };
 }

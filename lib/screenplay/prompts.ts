@@ -25,7 +25,9 @@ export function buildUnderstandMessages(numberedNovel: string): ChatMessage[] {
 【分场】按"地点变化或时间跳跃"切场，每场只给：
 - paragraph_range：[起段号, 止段号]（用下面给的 ¶ 段号）
 
-只输出 JSON：{"characters":[...],"scenes":[{"paragraph_range":[1,5]}]}
+[判断类型] 根据小说内容判断类型标签，如：悬疑 / 情感 / 都市 / 武侠 / 古装 / 科幻。给 2-4 个中文词。
+
+只输出 JSON：{"genre":["悬疑","都市"],"characters":[...],"scenes":[{"paragraph_range":[1,5]}]}
 不要任何解释。`;
   const user = `小说（每段前是 ¶段号）：\n${numberedNovel}`;
   return [
