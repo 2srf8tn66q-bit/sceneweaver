@@ -120,6 +120,7 @@ export default function Workbench({ id }: { id: string }) {
     if (start != null) {
       document.getElementById(`para-${start}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
+    document.getElementById(`scene-${scene.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
   // 场卡就地编辑回写：替换该场并持久化到 IDB。
@@ -254,14 +255,15 @@ export default function Workbench({ id }: { id: string }) {
           {screenplay ? (
             <div className="space-y-3">
               {screenplay.scenes.map((s) => (
-                <SceneCard
-                  key={s.id}
-                  scene={s}
-                  characters={screenplay.characters}
-                  onSelect={() => selectScene(s)}
-                  onSceneChange={handleSceneChange}
-                  active={s.id === activeSceneId}
-                />
+                <div key={s.id} id={`scene-${s.id}`}>
+                  <SceneCard
+                    scene={s}
+                    characters={screenplay.characters}
+                    onSelect={() => selectScene(s)}
+                    onSceneChange={handleSceneChange}
+                    active={s.id === activeSceneId}
+                  />
+                </div>
               ))}
             </div>
           ) : (
