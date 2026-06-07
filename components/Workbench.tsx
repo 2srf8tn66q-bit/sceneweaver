@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
 import SceneCard from "@/components/SceneCard";
+import WebMark from "@/components/WebMark";
 import GeneratingOverlay from "@/components/GeneratingOverlay";
 import { loadLLMConfig } from "@/lib/config";
 import { splitParagraphs } from "@/lib/screenplay/paragraphs";
 import { toYaml } from "@/lib/screenplay/yaml";
 import { renderCn } from "@/lib/screenplay/render";
+import { confidenceTier } from "@/lib/screenplay/confidence";
 import type { GenerateResult } from "@/lib/screenplay/pipeline";
 import type { Screenplay, Scene } from "@/lib/screenplay/types";
 import { getProject, saveProject, type Project } from "@/lib/projects";
@@ -127,11 +129,16 @@ export default function Workbench({ id }: { id: string }) {
     <div className="flex h-screen flex-col">
       <header className="flex items-center justify-between border-b border-neutral-200 px-4 py-2 text-sm">
         <div className="flex items-center gap-3">
-          <Link href="/" className="text-neutral-500 hover:text-neutral-900">
-            ← 我的剧本
+          <Link href="/" className="flex items-center gap-1 text-neutral-500 hover:text-neutral-900 shrink-0">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>
+            我的剧本
           </Link>
-          <span className="font-medium">工作台</span>
-          <span className="text-neutral-400">{project?.title ?? "…"}</span>
+          <span className="w-px h-4 bg-neutral-200 shrink-0" />
+          <WebMark size={19} className="shrink-0" />
+          <span className="truncate font-serif text-[15px] font-bold italic text-neutral-800">{screenplay?.meta.title || project?.title || "…"}</span>
+          {screenplay?.meta.genre?.length ? (
+            <span className="shrink-0 text-xs text-neutral-400">{screenplay.meta.genre.join(" · ")}</span>
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -187,20 +194,33 @@ export default function Workbench({ id }: { id: string }) {
 
       <div className="flex flex-1 overflow-hidden">
         <aside className="w-48 shrink-0 overflow-auto border-r border-neutral-200 p-3 text-sm">
-          <p className="mb-2 font-medium text-neutral-500">场次</p>
+          <div className="mb-2 flex items-center justify-between">
+            <span className="font-medium text-neutral-500">场次</span>
+            {screenplay ? <span className="text-xs text-neutral-400">{screenplay.scenes.length}</span> : null}
+          </div>
           {screenplay ? (
-            <ul className="space-y-1">
-              {screenplay.scenes.map((s) => (
+            <ul className="space-y-0.5">
+              {screenplay.scenes.map((s) => {
+                const tier = confidenceTier(s.review?.confidence ?? 1);
+                const dot =
+                  tier === "reliable" ? null : tier === "review"
+                    ? "#C0974A" : "#B4654A";
+                return (
                 <li
                   key={s.id}
                   onClick={() => selectScene(s)}
-                  className={`cursor-pointer truncate hover:text-neutral-900 ${
-                    s.id === activeSceneId ? "font-medium text-neutral-900" : "text-neutral-600"
+                  className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition hover:text-neutral-900 ${
+                    s.id === activeSceneId ? "bg-neutral-100 font-medium text-neutral-900" : "text-neutral-600"
                   }`}
                 >
-                  第{s.number}场 · {s.heading.location}
+                  <span className={`text-xs ${s.id === activeSceneId ? "text-[#C0974A]" : "text-neutral-400"}`}>
+                    {String(s.number).padStart(2, "0")}
+                  </span>
+                  <span className="truncate">{s.heading.location}</span>
+                  {dot && <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dot }} />}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           ) : (
             <p className="text-neutral-400">生成后在此列出</p>
