@@ -6,6 +6,8 @@
 
 ![SceneWeaver 首页](./public/screenshot-home.png)
 
+▶️ [Demo 演示视频](https://www.bilibili.com/video/BV1vpEb6RE3e)
+
 ---
 
 ## 一句话
