@@ -174,4 +174,3 @@ Demo 用《血字的研究》前 3 章（公版、对白多、知名）。
 - [产品需求文档](docs/PRD.md)
 - [剧本 YAML Schema 设计文档](docs/剧本Schema设计文档.md)
 - [项目计划与进度](Plan.md)
-- [开发规约与踩坑记录](Learnings.md)
