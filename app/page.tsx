@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
+import WebMark from "@/components/WebMark";
 import SplashScreen from "@/components/SplashScreen";
 import { getAllProjects, deleteProject, saveProject, type Project } from "@/lib/projects";
 
@@ -60,11 +61,7 @@ export default function HomePage() {
     <main className="mx-auto w-full max-w-4xl flex-1">
       <header className="flex items-center justify-between border-b border-neutral-200 px-6 py-5">
         <div className="flex items-center gap-2.5">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C0974A" strokeWidth="1.2" strokeLinecap="round" aria-hidden="true" className="shrink-0 -mt-0.5">
-            {[0,45,90,135,180,225,270,315].map((a,i) => { const r = a*Math.PI/180; return <line key={i} x1="12" y1="12" x2={12+11*Math.cos(r)} y2={12+11*Math.sin(r)} opacity="0.85" />; })}
-            {[10.2,7.2,4.4].map((rad,i) => { const pts = [0,45,90,135,180,225,270,315].map(a => { const r = a*Math.PI/180; return `${(12+rad*Math.cos(r)).toFixed(2)},${(12+rad*Math.sin(r)).toFixed(2)}`; }).join(" "); return <polygon key={i} points={pts} opacity={0.55+i*0.12} />; })}
-            <circle cx="12" cy="12" r="1.4" fill="#C0974A" stroke="none" />
-          </svg>
+          <WebMark size={24} className="shrink-0 -mt-0.5" />
           <h1 className="font-serif text-2xl font-bold italic">SceneWeaver</h1>
           <span className="text-sm text-neutral-400">我的剧本</span>
         </div>
