@@ -14,7 +14,7 @@ export default function ImportPage() {
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ""; // 允许重复选同一文件
+    e.target.value = "";
     if (!file) return;
     setReading(true);
     setError(null);
@@ -27,7 +27,6 @@ export default function ImportPage() {
         const res = await mammoth.extractRawText({ arrayBuffer });
         setText(res.value);
       } else {
-        // .txt / .md / 其他纯文本
         setText(await file.text());
       }
     } catch {
@@ -47,50 +46,52 @@ export default function ImportPage() {
   const chars = text.replace(/\s/g, "").length;
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-10">
-      <div className="mb-6 flex items-center justify-between">
+    <main className="mx-auto w-full max-w-3xl flex-1">
+      <header className="flex items-center justify-between border-b border-neutral-200 px-6 py-5">
         <div>
-          <h1 className="text-xl font-bold">新建改编 · 导入小说</h1>
-          <p className="mt-1 text-sm text-neutral-500">粘贴正文，或上传 .txt / .md / .docx 文件（建议 3 章以上）。</p>
+          <h1 className="text-lg font-bold">导入小说</h1>
+          <p className="mt-0.5 text-sm text-neutral-500">粘贴正文，或上传 .txt / .md / .docx 文件（建议 3 章以上）</p>
         </div>
         <Link href="/" className="text-sm text-neutral-500 hover:text-neutral-900">
           ← 返回
         </Link>
-      </div>
+      </header>
 
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        placeholder="在此粘贴小说正文…"
-        className="h-[52vh] w-full resize-none rounded-xl border border-neutral-300 p-4 text-sm leading-relaxed outline-none focus:border-neutral-400"
-      />
+      <div className="px-6 py-8">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="在此粘贴小说正文…"
+          className="h-[52vh] w-full resize-none rounded-xl border border-neutral-300 p-4 font-serif text-base leading-relaxed outline-none focus:border-neutral-400"
+        />
 
-      <div className="mt-3 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={reading}
+              className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100 disabled:opacity-50"
+            >
+              {reading ? "读取中…" : "上传文件"}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".txt,.md,.docx"
+              onChange={onFile}
+              className="hidden"
+            />
+            <span className="text-xs text-neutral-400">{chars} 字</span>
+            {error && <span className="text-xs text-rose-600">{error}</span>}
+          </div>
           <button
-            onClick={() => fileRef.current?.click()}
-            disabled={reading}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100 disabled:opacity-50"
+            onClick={start}
+            disabled={!text.trim()}
+            className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm text-white hover:bg-neutral-700 disabled:opacity-40"
           >
-            {reading ? "读取中…" : "上传文件"}
+            开始改编 →
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".txt,.md,.docx"
-            onChange={onFile}
-            className="hidden"
-          />
-          <span className="text-xs text-neutral-400">{chars} 字</span>
-          {error && <span className="text-xs text-rose-600">{error}</span>}
         </div>
-        <button
-          onClick={start}
-          disabled={!text.trim()}
-          className="rounded-md bg-neutral-900 px-4 py-1.5 text-sm text-white hover:bg-neutral-700 disabled:opacity-40"
-        >
-          开始改编 →
-        </button>
       </div>
     </main>
   );
