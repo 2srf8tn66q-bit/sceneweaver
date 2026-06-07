@@ -5,6 +5,7 @@ import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
 import SceneCard from "@/components/SceneCard";
 import WebMark from "@/components/WebMark";
+import CharacterGraph from "@/components/CharacterGraph";
 import GeneratingOverlay from "@/components/GeneratingOverlay";
 import { loadLLMConfig } from "@/lib/config";
 import { splitParagraphs } from "@/lib/screenplay/paragraphs";
@@ -36,6 +37,7 @@ export default function Workbench({ id }: { id: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [graphOpen, setGraphOpen] = useState(false);
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -256,7 +258,18 @@ export default function Workbench({ id }: { id: string }) {
         </section>
 
         <section className="flex-1 overflow-auto p-4">
-          <p className="mb-3 text-xs font-medium tracking-wide text-neutral-400 uppercase">剧本</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-medium tracking-wide text-neutral-400 uppercase">剧本</p>
+            {screenplay && screenplay.characters.length > 0 && (
+              <button
+                onClick={() => setGraphOpen(true)}
+                className="flex items-center gap-1.5 rounded-md border border-neutral-300 px-2.5 py-1 text-xs text-neutral-600 transition hover:border-neutral-400 hover:text-neutral-900"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="7" r="2.5"/><circle cx="12" cy="17" r="2.5"/><path d="M8 7l8 0M7 8l4 7M17 9l-4 6"/></svg>
+                人物关系图
+              </button>
+            )}
+          </div>
           {screenplay ? (
             <div className="space-y-3">
               {screenplay.scenes.map((s) => (
@@ -278,6 +291,10 @@ export default function Workbench({ id }: { id: string }) {
       </div>
 
       {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+
+      {graphOpen && screenplay && (
+        <CharacterGraph screenplay={screenplay} onClose={() => setGraphOpen(false)} />
+      )}
 
       {generating && (
         <GeneratingOverlay
