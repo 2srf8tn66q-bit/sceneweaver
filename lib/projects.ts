@@ -37,18 +37,18 @@ export async function deleteProject(id: string): Promise<void> {
   await del(`${PROJECT_PREFIX}${id}`);
 }
 
-/** 新建空项目（导入小说时调用）。标题取小说首行（截断），否则「未命名改编」。 */
-export function newProject(novel: string): Project {
+/** 新建空项目（导入小说时调用）。标题默认取小说首行，可传入覆盖。 */
+export function newProject(novel: string, title?: string): Project {
   const firstLine =
     novel
       .split(/\r?\n/)
       .map((s) => s.trim())
       .find((s) => s.length > 0) ?? "";
-  const title = firstLine ? firstLine.slice(0, 20) : "未命名改编";
+  const t = title?.trim() || firstLine?.slice(0, 20) || "未命名改编";
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
-    title,
+    title: t,
     novel,
     screenplay: null,
     createdAt: now,
