@@ -96,6 +96,62 @@ PR #36–#38 人物关系图谱
 
 ---
 
+## 剧本 Schema（YAML 数据契约）
+
+> 完整设计文档：[docs/剧本Schema设计文档.md](docs/剧本Schema设计文档.md)
+
+```yaml
+meta:
+  title: "咖啡馆的重逢"          # 剧本标题
+  logline: "多年后，林夏回到故城…" # 一句话梗概（可选）
+  genre: ["都市", "情感"]        # 类型标签
+  adapted_from:                  # 原著信息（可选）
+    novel_title: "示例小说"
+    chapters: [1, 2, 3]
+
+characters:                      # 全局人物表
+  - id: char_wang                # 唯一标识（拼音_名，LLM 稳定输出）
+    name: 王志强
+    aliases: ["老王", "王先生"]   # 别名归一
+    description: "35岁，咖啡馆老板"
+    role: protagonist            # protagonist / supporting / minor
+
+scenes:                          # 场次列表
+  - id: scene_001
+    number: 1                    # 场号（全局连续）
+    act: 1                       # 幕（可选）
+    heading:                     # 场标
+      setting: INT               # INT / EXT
+      location: 暖咖啡 - 窗边
+      time: DAY                  # DAY / NIGHT
+    synopsis: "王志强与林夏多年后重逢"  # 一句话梗概
+    dramatic_function: "建立两人的疏离，埋下未解的过往"  # 本场推进了什么
+    source:                      # 源文映射（← 可溯源的关键）
+      chapter: 1
+      paragraph_range: [12, 18]  # 对应原文 ¶12–¶18
+    elements:                    # 场内元素（有序）
+      - type: action
+        text: "午后的阳光斜照进暖咖啡。王志强擦着杯子…"
+        from_internal: true      # 由原文内心戏外化而来（可选）
+        note: "原文：林夏心里七上八下"
+      - type: dialogue
+        character: char_lin      # 引用人物表 id
+        mode: in_scene           # in_scene / voiceover / off_screen
+        parenthetical: "迟疑地"  # 表演提示（可选）
+        line: "好久不见。"
+      - type: dual_dialogue      # 双人同时说
+        lines:
+          - { character: char_wang, line: "你…" }
+          - { character: char_lin, line: "我…" }
+      - type: transition
+        text: CUT TO
+    review:                      # 审阅状态
+      status: generated          # generated / edited / confirmed
+      confidence: 0.82           # 0~1，自创比例越低越接近 1
+```
+
+---
+
 ## 本地运行
 
 ```bash

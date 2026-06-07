@@ -16,17 +16,12 @@ import type { GenerateResult } from "@/lib/screenplay/pipeline";
 import type { Screenplay, Scene } from "@/lib/screenplay/types";
 import { getProject, saveProject, type Project } from "@/lib/projects";
 
-/** 在浏览器触发一次文本文件下载。 */
+/** 在浏览器触发一次文本文件下载。无痕/普通模式通用。 */
 function downloadText(filename: string, content: string) {
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
+  a.href = "data:text/plain;charset=utf-8," + encodeURIComponent(content);
   a.download = filename;
-  document.body.appendChild(a);
   a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
 }
 
 export default function Workbench({ id }: { id: string }) {
