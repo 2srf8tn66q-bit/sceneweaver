@@ -9,7 +9,7 @@ export default function SplashScreen({ onEnter }: { onEnter: () => void }) {
       style={{
         background: "#111110",
         backgroundImage: "url('/spiderweb.png')",
-        backgroundSize: "contain",
+        backgroundSize: "cover",
         backgroundPosition: "right center",
         backgroundRepeat: "no-repeat",
         color: "#fff",
