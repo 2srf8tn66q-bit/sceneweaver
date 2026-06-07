@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import SettingsModal from "@/components/SettingsModal";
 import SplashScreen from "@/components/SplashScreen";
-import { getAllProjects, deleteProject, type Project } from "@/lib/projects";
+import { getAllProjects, deleteProject, saveProject, type Project } from "@/lib/projects";
 
 export default function HomePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [splashDismissed, setSplashDismissed] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const editRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     getAllProjects().then(setProjects);
@@ -20,7 +22,32 @@ export default function HomePage() {
     setProjects((ps) => (ps ? ps.filter((p) => p.id !== id) : ps));
   }
 
-  // 有项目 → 不展示启动页；没项目 → 展示（除非本次已关闭）
+  async function rename(id: string) {
+    const el = editRef.current;
+    if (!el) return;
+    const title = (el.textContent ?? "").trim().slice(0, 40) || "未命名改编";
+    const proj = projects?.find((p) => p.id === id);
+    if (!proj || title === proj.title) { setEditingId(null); return; }
+    const updated = { ...proj, title, updatedAt: new Date().toISOString() };
+    await saveProject(updated);
+    setProjects((ps) => (ps ? ps.map((p) => (p.id === id ? updated : p)) : ps));
+    setEditingId(null);
+  }
+
+  useEffect(() => {
+    if (!editingId) return;
+    const el = editRef.current;
+    if (!el) return;
+    requestAnimationFrame(() => {
+      el.focus();
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+    });
+  }, [editingId]);
+
   const showSplash = projects !== null && projects.length === 0 && !splashDismissed;
 
   if (projects === null) return null;
@@ -30,63 +57,102 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">SceneWeaver</h1>
-          <p className="text-sm text-neutral-500">小说转剧本助手 · 我的剧本</p>
+    <main className="mx-auto w-full max-w-4xl flex-1">
+      <header className="flex items-center justify-between border-b border-neutral-200 px-6 py-5">
+        <div className="flex items-center gap-2.5">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C0974A" strokeWidth="1.2" strokeLinecap="round" aria-hidden="true" className="shrink-0 -mt-0.5">
+            {[0,45,90,135,180,225,270,315].map((a,i) => { const r = a*Math.PI/180; return <line key={i} x1="12" y1="12" x2={12+11*Math.cos(r)} y2={12+11*Math.sin(r)} opacity="0.85" />; })}
+            {[10.2,7.2,4.4].map((rad,i) => { const pts = [0,45,90,135,180,225,270,315].map(a => { const r = a*Math.PI/180; return `${(12+rad*Math.cos(r)).toFixed(2)},${(12+rad*Math.sin(r)).toFixed(2)}`; }).join(" "); return <polygon key={i} points={pts} opacity={0.55+i*0.12} />; })}
+            <circle cx="12" cy="12" r="1.4" fill="#C0974A" stroke="none" />
+          </svg>
+          <h1 className="font-serif text-2xl font-bold italic">SceneWeaver</h1>
+          <span className="text-sm text-neutral-400">我的剧本</span>
         </div>
-        <div className="flex gap-2">
-          <button
-            data-testid="open-settings"
-            onClick={() => setSettingsOpen(true)}
-            className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100"
-          >
-            设置
-          </button>
-          <Link
-            href="/import"
-            className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm text-white hover:bg-neutral-700"
-          >
-            + 新建改编
-          </Link>
-        </div>
+        <button
+          data-testid="open-settings"
+          onClick={() => setSettingsOpen(true)}
+          className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-100"
+        >
+          设置
+        </button>
       </header>
 
       {projects.length === 0 ? (
-        <section className="mt-16 flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 py-20 text-center">
+        <section className="flex flex-col items-center justify-center px-6 py-32 text-center">
           <p className="text-lg font-medium">还没有改编项目</p>
           <p className="mt-2 max-w-md text-sm text-neutral-500">
             导入一篇 3 章以上的小说，SceneWeaver 会把它改编成结构化、可溯源、可打磨的剧本。
           </p>
         </section>
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((p) => (
+        <div className="grid grid-cols-2 gap-4 px-6 py-8">
+          <Link
+            href="/import"
+            className="flex min-h-[130px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-300 text-neutral-400 transition hover:border-neutral-400 hover:text-neutral-600"
+          >
+            <span className="text-2xl font-light">+</span>
+            <span className="text-sm">新建改编</span>
+          </Link>
+          {projects.map((p) => {
+            const chars = p.novel.replace(/\s/g, "").length;
+            return (
             <Link
               key={p.id}
               href={`/project/${p.id}`}
-              className="group relative rounded-xl border border-neutral-200 bg-white p-4 transition hover:border-neutral-300 hover:shadow-sm"
+              className="group relative flex min-h-[130px] flex-col rounded-xl border border-neutral-200 bg-white p-4 transition hover:border-neutral-300 hover:shadow-sm"
             >
-              <h2 className="truncate pr-6 font-medium text-neutral-900">{p.title}</h2>
+              {editingId === p.id ? (
+                <h2
+                  ref={editRef}
+                  contentEditable
+                  suppressContentEditableWarning
+                  onClick={(e) => e.stopPropagation()}
+                  onBlur={() => rename(p.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") { editRef.current!.textContent = p.title; setEditingId(null); }
+                    if (e.key === "Enter") { e.preventDefault(); (e.target as HTMLElement).blur(); }
+                  }}
+                  className="truncate pr-6 font-medium text-neutral-900 outline-none"
+                >
+                  {p.title}
+                </h2>
+              ) : (
+                <h2 className="truncate pr-6 font-medium text-neutral-900">{p.title}</h2>
+              )}
               <p className="mt-1 text-xs text-neutral-400">
-                {p.screenplay ? `已生成 ${p.screenplay.scenes.length} 场` : "未生成"}
+                {p.screenplay ? `${p.screenplay.scenes.length} 场` : "未生成"}
+                {" · "}
+                {(chars / 1000).toFixed(1)}k 字
                 {" · "}
                 {new Date(p.updatedAt).toLocaleDateString()}
               </p>
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (confirm(`删除「${p.title}」？此操作不可撤销。`)) remove(p.id);
-                }}
-                className="absolute top-2 right-2 rounded p-1 text-neutral-300 opacity-0 transition group-hover:opacity-100 hover:bg-neutral-100 hover:text-rose-600"
-                aria-label="删除项目"
-              >
-                ✕
-              </button>
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 transition group-hover:opacity-100">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setEditingId(p.id);
+                  }}
+                  className="rounded p-1 text-neutral-300 hover:bg-neutral-100 hover:text-neutral-600"
+                  aria-label="重命名"
+                >
+                  ✎
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (confirm(`删除「${p.title}」？此操作不可撤销。`)) remove(p.id);
+                  }}
+                  className="rounded p-1 text-neutral-300 hover:bg-neutral-100 hover:text-rose-600"
+                  aria-label="删除项目"
+                >
+                  ✕
+                </button>
+              </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
 
