@@ -116,6 +116,10 @@ export async function generateScreenplay(
   prog({ stage: "质检", pct: 92, msg: "正在检查剧本质量…" });
   let parsed = assemble(understand, scenes, opts);
   let validation = validateScreenplay(parsed);
+  log(`质检结果：${validation.errors.length} 错误 / ${validation.warnings.length} 警告`);
+  for (const e of validation.errors) log(`  [错误] ${e.path}: ${e.message}`);
+  for (const w of validation.warnings.slice(0, 5)) log(`  [警告] ${w.path}: ${w.message}`);
+  if (validation.warnings.length > 5) log(`  ...等 ${validation.warnings.length - 5} 条警告`);
   let repairs = 0;
   const MAX_REPAIRS = 1;
   while (!validation.valid && repairs < MAX_REPAIRS) {
@@ -125,6 +129,7 @@ export async function generateScreenplay(
     scenes = renumber(safeParseJSON<{ scenes?: unknown[] }>(repairRaw, { scenes }).scenes ?? scenes);
     parsed = assemble(understand, scenes, opts);
     validation = validateScreenplay(parsed);
+    log(`修复后：${validation.errors.length} 错误 / ${validation.warnings.length} 警告`);
     repairs++;
   }
   prog({ stage: "完成", pct: 100, msg: `生成 ${scenes.length} 场剧本` });
@@ -141,7 +146,7 @@ export async function generateScreenplay(
 }
 
 /** 各批独立生成会重复 id/场号，合并后统一重编，保证全局唯一且连续。 */
-function renumber(scenes: unknown[]): unknown[] {
+export function renumber(scenes: unknown[]): unknown[] {
   return scenes.map((s, i) =>
     s && typeof s === "object"
       ? { ...(s as Record<string, unknown>), id: `scene_${String(i + 1).padStart(3, "0")}`, number: i + 1 }
