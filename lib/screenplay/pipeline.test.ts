@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateScreenplay, batchScenes, mapLimit, type LLMCall } from "./pipeline";
+import { generateScreenplay, batchScenes, mapLimit, renumber, type LLMCall } from "./pipeline";
 import type { SceneText } from "./prompts";
 
 // 假 LLM：根据系统提示词内容判断是 Call1 / Call2 / 修复，返回预设 JSON
@@ -124,6 +124,25 @@ describe("分批后重编号", () => {
     const ids = r.screenplay?.scenes.map((s) => s.id) ?? [];
     expect(new Set(ids).size).toBe(ids.length); // 全唯一
     expect(r.screenplay?.scenes.map((s) => s.number)).toEqual([1, 2]);
+  });
+});
+
+// 回归测试 · 真实 bug：Call2 分批并行时各批独立从 scene_001 编号，
+// perBatch.flat() 合并后 id/number 撞车 → 工作台 React 列表重复 key（PR#19 修复）。
+// 此测试直接锁死 renumber：合并后必须全局唯一且连续，且不破坏其它字段。
+describe("回归 · 分块合并场号撞车（PR#19）", () => {
+  it("各批重复的 id/number，重编号后全局唯一且连续", () => {
+    const merged = [
+      { id: "scene_001", number: 1, heading: { location: "A" } }, // 批 1
+      { id: "scene_002", number: 2, heading: { location: "B" } }, // 批 1
+      { id: "scene_001", number: 1, heading: { location: "C" } }, // 批 2 ← 撞车
+      { id: "scene_002", number: 2, heading: { location: "D" } }, // 批 2 ← 撞车
+    ];
+    const out = renumber(merged) as Array<{ id: string; number: number; heading: { location: string } }>;
+    expect(new Set(out.map((s) => s.id)).size).toBe(4); // id 全局唯一
+    expect(out.map((s) => s.number)).toEqual([1, 2, 3, 4]); // 场号连续
+    expect(out.map((s) => s.id)).toEqual(["scene_001", "scene_002", "scene_003", "scene_004"]);
+    expect(out.map((s) => s.heading.location)).toEqual(["A", "B", "C", "D"]); // 其它字段不变、顺序不乱
   });
 });
 
