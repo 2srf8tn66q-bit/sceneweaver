@@ -27,5 +27,9 @@ venv/
 /Plan.md
 /Learnings.md
 
+# 本地路演文件（不推 GitHub）
+/SceneWeaver-路演.html
+/docs/sw-ppt-assets.html
+
 # Claude 本地工具配置（不入库）
 /.claude/
