@@ -9,7 +9,7 @@ export interface NumberedParagraph {
 /** 按换行切段，去掉空行，从 1 编号。 */
 export function splitParagraphs(novel: string): NumberedParagraph[] {
   return novel
-    .split(/\r?\n/)
+    .split(/\r\n|\n|\r/)
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
     .map((text, i) => ({ n: i + 1, text }));
