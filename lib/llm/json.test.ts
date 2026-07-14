@@ -17,6 +17,14 @@ describe("JSON 容错（extractJSON / safeParseJSON）", () => {
     expect(JSON.parse(extractJSON(t))).toEqual({ a: { b: { c: 1 } }, d: 2 });
   });
 
+  it("忽略 JSON 字符串内容里的花括号和转义引号", () => {
+    const text = '说明 {"statement":"门上写着 {RACHE}，他说 \\\"别碰}\\\"","ok":true} 尾注';
+    expect(JSON.parse(extractJSON(text))).toEqual({
+      statement: '门上写着 {RACHE}，他说 "别碰}"',
+      ok: true,
+    });
+  });
+
   it("safeParseJSON 解析成功返回对象", () => {
     expect(safeParseJSON('```json\n{"x":9}\n```', {})).toEqual({ x: 9 });
   });

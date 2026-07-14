@@ -14,7 +14,23 @@ export function extractJSON(text: string): string {
   const firstBrace = text.indexOf("{");
   if (firstBrace === -1) return text.trim();
   let depth = 0;
+  let inString = false;
+  let escaped = false;
   for (let i = firstBrace; i < text.length; i++) {
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (text[i] === "\\") {
+        escaped = true;
+      } else if (text[i] === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (text[i] === '"') {
+      inString = true;
+      continue;
+    }
     if (text[i] === "{") depth++;
     if (text[i] === "}") {
       depth--;

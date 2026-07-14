@@ -4,7 +4,32 @@
 import type { LLMConfig, ChatMessage } from "./types";
 import { getProvider } from "./providers";
 
-export async function serverChat(config: LLMConfig, messages: ChatMessage[]): Promise<string> {
+export interface ServerChatUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+}
+
+export interface ServerChatResult {
+  content: string;
+  usage?: ServerChatUsage;
+}
+
+export interface ServerChatOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  maxTokens?: number;
+}
+
+function tokenCount(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+export async function serverChatDetailed(
+  config: LLMConfig,
+  messages: ChatMessage[],
+  options: ServerChatOptions = {},
+): Promise<ServerChatResult> {
   const isClaude = getProvider(config.provider).format === "claude";
 
   let url: string;
@@ -22,7 +47,12 @@ export async function serverChat(config: LLMConfig, messages: ChatMessage[]): Pr
     const conversation = messages
       .filter((m) => m.role !== "system")
       .map((m) => ({ role: m.role, content: m.content }));
-    body = { model: config.model, max_tokens: 4096, messages: conversation, ...(system ? { system } : {}) };
+    body = {
+      model: config.model,
+      max_tokens: options.maxTokens ?? 4096,
+      messages: conversation,
+      ...(system ? { system } : {}),
+    };
   } else {
     url = `${config.baseUrl}/chat/completions`;
     headers = { "Content-Type": "application/json", Authorization: `Bearer ${config.apiKey}` };
@@ -30,16 +60,63 @@ export async function serverChat(config: LLMConfig, messages: ChatMessage[]): Pr
       model: config.model,
       messages: messages.map((m) => ({ role: m.role, content: m.content })),
       stream: false,
+      ...(options.maxTokens ? { max_tokens: options.maxTokens } : {}),
     };
   }
 
-  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`LLM ${res.status}: ${txt.slice(0, 200)}`);
+  const controller = new AbortController();
+  const timeout = options.timeoutMs
+    ? setTimeout(() => controller.abort(), options.timeoutMs)
+    : undefined;
+  const abort = () => controller.abort();
+  if (options.signal?.aborted) controller.abort();
+  else options.signal?.addEventListener("abort", abort, { once: true });
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`LLM ${res.status}: ${txt.slice(0, 200)}`);
+    }
+    const data = await res.json();
+    const content = isClaude ? data?.content?.[0]?.text : data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("LLM 返回格式异常");
+    const inputTokens = tokenCount(data?.usage?.input_tokens ?? data?.usage?.prompt_tokens);
+    const outputTokens = tokenCount(
+      data?.usage?.output_tokens ?? data?.usage?.completion_tokens,
+    );
+    const totalTokens = tokenCount(data?.usage?.total_tokens) ??
+      (inputTokens !== undefined && outputTokens !== undefined
+        ? inputTokens + outputTokens
+        : undefined);
+    const usage =
+      inputTokens !== undefined || outputTokens !== undefined || totalTokens !== undefined
+        ? { inputTokens, outputTokens, totalTokens }
+        : undefined;
+    return { content: content as string, usage };
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      if (options.signal?.aborted) {
+        throw new DOMException("Request aborted by user", "AbortError");
+      }
+      throw new Error("LLM 请求超时");
+    }
+    throw error;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+    options.signal?.removeEventListener("abort", abort);
   }
-  const data = await res.json();
-  const content = isClaude ? data?.content?.[0]?.text : data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error("LLM 返回格式异常");
-  return content as string;
+}
+
+export async function serverChat(
+  config: LLMConfig,
+  messages: ChatMessage[],
+  signal?: AbortSignal,
+): Promise<string> {
+  return (await serverChatDetailed(config, messages, { signal })).content;
 }
