@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "experiment:story-bible": "zsh scripts/run-story-bible-experiment.zsh"
   },
   "dependencies": {
     "idb-keyval": "^6.2.5",
